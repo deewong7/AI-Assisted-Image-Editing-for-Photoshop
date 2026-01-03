@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script src="main.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <!-- 
+  <sp-menu id="nav">
+    <sp-menu-item data-page="main">Main</sp-menu-item>
+    <sp-menu-item data-page="settings">Settings</sp-menu-item>
+    <sp-menu-item data-page="about">About</sp-menu-item>
+  </sp-menu> -->
+
+  <sp-action-group id="nav" selects="single">
+    <sp-action-button quiet data-page="main" style="text-decoration: underline;">Main</sp-action-button>
+    <sp-action-button quiet data-page="settings">Preference</sp-action-button>
+    <sp-action-button quiet data-page="about">About</sp-action-button>
+  </sp-action-group>
+
+  <sp-div id="pages">
+
+    <!-- PAGE: MAIN -->
+    <sp-div id="main" data-page>
+
+      <sp-heading size="xs">Model Settings</sp-heading>
+      <sp-divider size="small"></sp-divider>
+      <!-- Select models -->
+      <sp-picker placeholder="Choose a model..." , style="width: 220px">
+        <sp-menu id="modelPicker" slot="options">
+          <sp-menu-item value="doubao-seedream-4-5-251128">SeeDream 4.5</sp-menu-item>
+          <sp-menu-item selected value="gemini-3-pro-image-preview">Nano Banana Pro 3</sp-menu-item>
+          <sp-menu-item disabled value="flux2.max">FLUX.2[MAX]</sp-menu-item>
+          <sp-menu-item disabled value="z-image">Z-Image</sp-menu-item>
+        </sp-menu>
+      </sp-picker>
+
+      <!-- Resolution -->
+      <sp-picker placeholder="Choose a resolution..." , style="width: 108px">
+        <sp-menu id="resolutionPicker" slot="options">
+          <sp-menu-item id="1K" value="1K">1K</sp-menu-item>
+          <sp-menu-item id="2K" value="2K" selected>2K</sp-menu-item>
+          <sp-menu-item value="4K">4K</sp-menu-item>
+        </sp-menu>
+      </sp-picker>
+
+      <!-- Aspect Ratio -->
+      <sp-picker placehodler="Choose a ratio" , style="width: 110px">
+        <sp-menu id="aspectRatioPicker" slot="options">
+          <sp-menu-item value="1:1" selected>1:1</sp-menu-item>
+          <sp-menu-item value="3:4">3:4</sp-menu-item>
+          <sp-menu-item value="4:3">4:3</sp-menu-item>
+          <sp-menu-item value="2:3">2:3</sp-menu-item>
+          <sp-menu-item value="3:2">3:2</sp-menu-item>
+          <sp-menu-item value="16:9">16:9</sp-menu-item>
+        </sp-menu>
+      </sp-picker>
+
+      <!-- Google Model Specific Settings -->
+      <sp-div id="googleModel">
+        <!-- Temperature -->
+        <sp-checkbox id="lockParam" checked>Lock Parameter</sp-checkbox>
+        <sp-slider disabled id="temperature" variant="filled" min="0.3" max="0.95" value=".6" step="0.01">
+          <sp-label slot="label">Temperature</sp-label>
+        </sp-slider>
+
+        <sp-slider disabled id="top_p" variant="filled" min="0.8" max="0.95" value=".9" step="0.01">
+          <sp-label slot="label">top_P</sp-label>
+        </sp-slider>
+
+      </sp-div>
+
+      <!-- <sp-divider></sp-divider> -->
+      <sp-heading size="xs">Generate Image</sp-heading>
+      <sp-divider size="small"></sp-divider>
+      <!-- input text which should be used as prompt later on -->
+
+      <!-- image to be processed preview section -->
+      <sp-label slot="label">Image Preview
+        <sp-p id="imageToProcess" class="thumb"
+          style="width: 220px; height: 220px; max-width: 300px; max-height: 300px; overflow: auto;"></sp-p>
+        <sp-button id="clear" variant="secondary">Clear</sp-button>
+        <sp-br></sp-br>
+
+        <!-- prompt textarea -->
+        <sp-textarea id="promptInput" placeholder="Enter your prompt here"
+          style="resize: vertical; overflow: auto; width: 220px" height="220px">
+          <sp-label slot="label">Prompt</sp-label>
+        </sp-textarea>
+
+        <!-- TODO: add color difference explanation -->
+        <sp-body id="error" class="error-message" style="display: none"></sp-body>
+
+        <sp-br></sp-br>
+        <sp-button variant="secondary" id="loadPrompt">Load</sp-button>
+        <sp-button id="generate">Generate</sp-button>
+
+        <!-- LOG -->
+        <sp-heading size="xs">LOG</sp-heading>
+        <sp-divider size="small"></sp-divider>
+        <sp-textarea class="log" id="log" height="200px" placeholder="Logging information">
+          <sp-label slot="label">Logging information</sp-label></sp-textarea>
+        <sp-br></sp-br>
+        <sp-button id="clearLog" variant="secondary">clear</sp-button>
+
+
+
+    </sp-div>
+
+    <!-- PAGE: SETTINGS -->
+    <sp-div id="settings" data-page hidden>
+      <!-- <sp-heading size="S">Developer</sp-heading> -->
+      <sp-field-group label="settings">
+
+        <sp-checkbox id="showLog" checked>Log</sp-checkbox>
+        <br>
+
+        <sp-checkbox id="test">Test</sp-checkbox>
+        <br>
+
+        <sp-checkbox id="skipMask">Skip Layer Mask</sp-checkbox>
+        <br>
+
+        <sp-checkbox disabled>Preview Image</sp-checkbox>
+        <br>
+
+        <sp-checkbox disabled>Group Generated Images</sp-checkbox>
+        <br>
+
+        <sp-checkbox disabled>Adaptive Resolution</sp-checkbox>
+        <br>
+
+      </sp-field-group>
+
+      <sp-heading size="xxs">API Key</sp-heading>
+      <sp-label>Google</sp-label>
+      <sp-textfield id="api-key-google" placeholder="****************"></sp-textfield>
+      <sp-label>Bytedance</sp-label>
+      <sp-textfield id="api-key-bytedance" placeholder="****************"></sp-textfield>
+
+      <sp-checkbox id="showKey">Show API Key in Plaintext</sp-checkbox><br>
+
+      <sp-button quiet id="update-api-key">Update</sp-button>
+
+    </sp-div>
+
+    <!-- PAGE: ABOUT -->
+    <sp-div id="about" data-page hidden>
+      <sp-label>
+        <sp-heading size="xs">Discuss</sp-heading>
+
+        Report a bug or issue on <sp-link variant="secondary"
+          href="https://github.com/deewong7/Ai-Assisted-Image-Editing-for-Photoshop">Github</sp-link>.
+
+        <br>
+
+        Discuss more in Douyin group chat <sp-link variant="secondary"
+          href="https://v.douyin.com/tWFPY5X2i_o/">here</sp-link>.
+
+      </sp-label>
+
+
+      <sp-heading size="xs">Developer Reference</sp-heading>
+      <sp-link variant="secondary" href="https://developer.adobe.com/photoshop/uxp/2022/ps_reference/">Photoshop
+        API</sp-link><br>
+      <sp-link variant="secondary" href="https://developer.adobe.com/photoshop/uxp/2022/ps_reference/">UXP
+        API</sp-link><br>
+      <sp-link variant="secondary" href="https://artificialanalysis.ai/image/leaderboard/editing">Model Editing
+        Leaderboard</sp-link><br>
+
+      <sp-heading size="xs">Copyright</sp-heading>
+      <sp-label>
+        AI-assisted image editing for Photoshop<br>
+        Version 0.1.0<br>
+
+        © 2026 dw<br>
+        License: GPL-3.0<br>
+        <br>
+        Developed by dw
+        <br>
+        <br>
+
+        Free to use.
+
+        If this plugin helps you,<br>
+        consider supporting its development.<br>
+        It would feed a cat who supervises <br> most of the coding.<br>
+
+        <br>
+        This plugin is not affiliated with or endorsed <br>by Adobe Inc.<br>
+        Adobe and Photoshop are trademarks of<br>Adobe Inc.
+      </sp-label>
+
+    </sp-div>
+  </sp-div>
+
+  <!-- <sp-menu label="Selection type"> -->
+  <!-- <sp-menu-item id="menu"> Menu </sp-menu-item> -->
+  <!-- <sp-menu-divider></sp-menu-divider> -->
+  <!-- <sp-menu-item id="mainMenu" style="display: none;"> Main </sp-menu-item> -->
+  <!-- <sp-menu-item id="settingMenu" style="display: none;"> Settings </sp-menu-item> -->
+  <!-- <sp-menu-item disabled> Other </sp-menu-item> -->
+  <!-- </sp-menu> -->
+
+</body>
+
+</html>
