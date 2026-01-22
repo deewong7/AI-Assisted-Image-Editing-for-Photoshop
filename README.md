@@ -14,13 +14,14 @@
 ### Model Selection
 Currently support Google `Nano Banana Pro 3` and ByteDance `SeeDream 4.5`.
 
-<!-- ![Model Selection](./images/modelSelection.jpg) -->
-<img src="./images/modelSelection.jpg" height="300">
-
-
 ### Main Page
 <!-- ![Main Page](./images/main.jpg) -->
 <img src="./images/main.jpg" height="800">
+
+### Preference Page
+<!-- ![Main Page](./images/main.jpg) -->
+<img src="./images/preference.jpg" height="800">
+
 
 ## Compatibility
 `MacOS`, `Windows`

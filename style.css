@@ -1,3 +1,14 @@
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+#root {
+  height: 100%;
+  overflow-y: auto;
+}
+
 body {
   color: white;
   padding: 0 16px;
@@ -51,12 +62,40 @@ sp-action-button[quiet] {
   padding-bottom: 0%;
 }
 
-sp-button {
+sp-button.shortBtn {
   width: 10px;
+}
+
+sp-button.longBtn {
+  width: 220px;
 }
 
 sp-action-nav {
   display: flex;
   justify-content: flex-start;
   flex-direction: row;
+}
+
+.hidden {
+  display: none;
+}
+
+sp-textarea,
+textarea {
+  /* lock width */
+  width: 100%;
+  height: 220px;
+}
+
+.main {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.right {
+  display: flex;
+  /* width: 220px; */
+  align-self: flex-end;
+  gap: 8px;
 }

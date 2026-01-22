@@ -6,7 +6,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 
-<body>
+<body id="root">
   <!-- 
   <sp-menu id="nav">
     <sp-menu-item data-page="main">Main</sp-menu-item>
@@ -15,7 +15,8 @@
   </sp-menu> -->
 
   <sp-action-group id="nav" selects="single">
-    <sp-action-button quiet data-page="main" style="text-decoration: underline;">Main</sp-action-button>
+    <sp-action-button quiet data-page="main" style="text-decoration: underline;">Image</sp-action-button>
+    <!-- <sp-action-button quiet data-page="chat">Chat</sp-action-button> -->
     <sp-action-button quiet data-page="settings">Preference</sp-action-button>
     <sp-action-button quiet data-page="about">About</sp-action-button>
   </sp-action-group>
@@ -25,44 +26,53 @@
     <!-- PAGE: MAIN -->
     <sp-div id="main" data-page>
 
-      <sp-heading size="xs">Model Settings</sp-heading>
-      <sp-divider size="small"></sp-divider>
-      <!-- Select models -->
-      <sp-picker placeholder="Choose a model..." , style="width: 220px">
-        <sp-menu id="modelPicker" slot="options">
-          <sp-menu-item value="doubao-seedream-4-5-251128">SeeDream 4.5</sp-menu-item>
-          <sp-menu-item selected value="gemini-3-pro-image-preview">Nano Banana Pro 3</sp-menu-item>
-          <sp-menu-item disabled value="flux2.max">FLUX.2[MAX]</sp-menu-item>
-          <sp-menu-item disabled value="z-image">Z-Image</sp-menu-item>
-        </sp-menu>
-      </sp-picker>
+      <!-- MODEL settings -->
+      <sp-div>
+        <sp-heading size="xs">Model Settings</sp-heading>
+        <sp-divider size="small"></sp-divider>
+        <!-- Select models -->
+        <sp-picker placeholder="Choose a model..." , style="width: 220px">
+          <sp-menu id="modelPicker" slot="options">
+            <sp-menu-item selected value="doubao-seedream-4-5-251128">SeeDream 4.5</sp-menu-item>
+            <sp-menu-item value="gemini-3-pro-image-preview">Nano Banana Pro 🍌</sp-menu-item>
+            <!-- <sp-menu-item disabled value="grok-2-image">Grok 2 Image</sp-menu-item>
+            <sp-menu-item disabled value="flux2.max">FLUX.2[MAX]</sp-menu-item>
+            <sp-menu-item disabled value="z-image">Z-Image</sp-menu-item> -->
+          </sp-menu>
+        </sp-picker>
 
-      <!-- Resolution -->
-      <sp-picker placeholder="Choose a resolution..." , style="width: 108px">
-        <sp-menu id="resolutionPicker" slot="options">
-          <sp-menu-item id="1K" value="1K">1K</sp-menu-item>
-          <sp-menu-item id="2K" value="2K" selected>2K</sp-menu-item>
-          <sp-menu-item value="4K">4K</sp-menu-item>
-        </sp-menu>
-      </sp-picker>
+        <!-- Resolution -->
+        <sp-picker id="resolutionPickerArea" placeholder="Choose a resolution..." ,
+          style="width: 108px; display: none;">
+          <sp-menu id="resolutionPicker" slot="options">
+            <sp-menu-item id="1K" value="1K">1K</sp-menu-item>
+            <sp-menu-item id="2K" value="2K" selected>2K</sp-menu-item>
+            <sp-menu-item id="4K" value="4K">4K</sp-menu-item>
+          </sp-menu>
+        </sp-picker>
 
-      <!-- Aspect Ratio -->
-      <sp-picker placehodler="Choose a ratio" , style="width: 110px">
-        <sp-menu id="aspectRatioPicker" slot="options">
-          <sp-menu-item value="1:1" selected>1:1</sp-menu-item>
-          <sp-menu-item value="3:4">3:4</sp-menu-item>
-          <sp-menu-item value="4:3">4:3</sp-menu-item>
-          <sp-menu-item value="2:3">2:3</sp-menu-item>
-          <sp-menu-item value="3:2">3:2</sp-menu-item>
-          <sp-menu-item value="16:9">16:9</sp-menu-item>
-        </sp-menu>
-      </sp-picker>
+        <!-- Aspect Ratio -->
+        <sp-picker id="ratioPicker" placehodler="Choose a ratio" , style="width: 110px; display: none;">
+          <sp-menu id="aspectRatioPicker" slot="options">
+            <!-- As nano banana 3 pro and seedream 4.5 support arbitrary ratio input  -->
+            <!-- it is unnecessary to add the ratio parameter to the http request body -->
+            <sp-menu-item value="default" selected>Auto</sp-menu-item>
+            <sp-menu-item value="1:1">1:1</sp-menu-item>
+            <sp-menu-item value="3:4">3:4</sp-menu-item>
+            <sp-menu-item value="4:3">4:3</sp-menu-item>
+            <sp-menu-item value="2:3">2:3</sp-menu-item>
+            <sp-menu-item value="3:2">3:2</sp-menu-item>
+            <sp-menu-item value="16:9">16:9</sp-menu-item>
+          </sp-menu>
+        </sp-picker>
+
+      </sp-div>
 
       <!-- Google Model Specific Settings -->
-      <sp-div id="googleModel">
+      <sp-div id="googleModel" width="220px">
         <!-- Temperature -->
         <sp-checkbox id="lockParam" checked>Lock Parameter</sp-checkbox>
-        <sp-slider disabled id="temperature" variant="filled" min="0.3" max="0.95" value=".6" step="0.01">
+        <sp-slider disabled id="temperature" variant="filled" min="0.3" max="1.00" value="1.0" step="0.01">
           <sp-label slot="label">Temperature</sp-label>
         </sp-slider>
 
@@ -72,19 +82,68 @@
 
       </sp-div>
 
+      <sp-div id="grokModel">
+        <sp-checkbox id="allowNSFW" checked>Allow NSFW</sp-checkbox>
+      </sp-div>
+
       <!-- <sp-divider></sp-divider> -->
       <sp-heading size="xs">Generate Image</sp-heading>
       <sp-divider size="small"></sp-divider>
       <!-- input text which should be used as prompt later on -->
 
       <!-- image to be processed preview section -->
-      <sp-label slot="label">Image Preview
-        <sp-p id="imageToProcess" class="thumb"
-          style="width: 220px; height: 220px; max-width: 300px; max-height: 300px; overflow: auto;"></sp-p>
-        <sp-button id="clear" variant="secondary">Clear</sp-button>
-        <sp-br></sp-br>
+      <sp-div id="imagePreview" style="display: none;">
+        <sp-label slot="label">Image Preview
+          <sp-p id="imageToProcess" class="thumb"
+            style="width: 220px; height: 220px; max-width: 300px; max-height: 300px; overflow: auto;"></sp-p>
+          <sp-button id="clear" variant="secondary">Clear</sp-button>
+          <sp-br></sp-br>
+      </sp-div>
 
-        <!-- prompt textarea -->
+      <!-- prompt textarea -->
+      <div class="main">
+
+        <!-- SUB-PAGE: PROMPTS MANAGEMENT -->
+        <sp-div id="promptManage">
+          <sp-label slot="label">Prompt Preset</sp-label><br>
+          <sp-picker placeholder="Choose a preset..." , style="width: 175px">
+            <sp-menu id="promptPicker" slot="options">
+            </sp-menu>
+          </sp-picker>
+
+          <!-- <sp-button variant="warning" style="height: 5px;">delete</sp-button> -->
+
+          <sp-action-button id="editPromptButton" title="Create a new preset">
+            <svg viewBox="0 0 36 36" style="width: 18px; height: 18px;" fill="gray">
+              <path
+                d="M33.567 8.2L27.8 2.432a1.215 1.215 0 0 0-.866-.353H26.9a1.371 1.371 0 0 0-.927.406L5.084 23.372a.99.99 0 0 0-.251.422L2.055 33.1c-.114.377.459.851.783.851a.251.251 0 0 0 .062-.007c.276-.063 7.866-2.344 9.311-2.778a.972.972 0 0 0 .414-.249l20.888-20.889a1.372 1.372 0 0 0 .4-.883 1.221 1.221 0 0 0-.346-.945zM11.4 29.316c-2.161.649-4.862 1.465-6.729 2.022l2.009-6.73z" />
+            </svg>
+          </sp-action-button>
+
+          <!-- <sp-action-button id="editPrompt">
+      </sp-action-button>
+ -->
+          <div id="newPresetTextDiv" style="display: none;">
+
+            <div id="promptPresetDiv" class="main">
+              <sp-label slot="labels">Prompt Name</sp-label>
+              <sp-textfield id="newPresetName" width="220px">
+              </sp-textfield>
+
+              <sp-label slot="labels">Prompt Content</sp-label>
+              <sp-textarea id="promptPresetTextarea" style="width: 220px;"
+                placeholder="Select a prompt preset..."></sp-textarea>
+              <div class="right">
+                <sp-button id="deletePromptButton" variant="warning">Delete</sp-button>
+                <sp-button id="savePromptPreset">Save</sp-button>
+              </div>
+            </div>
+
+          </div>
+
+        </sp-div>
+
+
         <sp-textarea id="promptInput" placeholder="Enter your prompt here"
           style="resize: vertical; overflow: auto; width: 220px" height="220px">
           <sp-label slot="label">Prompt</sp-label>
@@ -94,18 +153,46 @@
         <sp-body id="error" class="error-message" style="display: none"></sp-body>
 
         <sp-br></sp-br>
-        <sp-button variant="secondary" id="loadPrompt">Load</sp-button>
-        <sp-button id="generate">Generate</sp-button>
 
-        <!-- LOG -->
-        <sp-heading size="xs">LOG</sp-heading>
-        <sp-divider size="small"></sp-divider>
-        <sp-textarea class="log" id="log" height="200px" placeholder="Logging information">
-          <sp-label slot="label">Logging information</sp-label></sp-textarea>
-        <sp-br></sp-br>
-        <sp-button id="clearLog" variant="secondary">clear</sp-button>
+        <div id="generateBtnDiv" class="right">
+          <!-- <sp-button class="shortBtn" variant="secondary" id="loadPrompt">Load</sp-button> -->
+          <sp-button class="shortBtn" id="generate">Generate</sp-button>
+        </div>
+      </div>
+
+      <div width="220px">
+        <sp-div id="referenceImage" style="display: none;">
+          <sp-heading size="xs">Reference Image</sp-heading>
+          <sp-div id="refImagePreviewDiv" style="display: none;">
+            <sp-label id='refCount' slot="label">Reference Image Preview </sp-label>
+
+            <sp-p id="refImagePreview" class="thumb" style="
+      display: flex;
+      flex-direction: row;
+      gap: 8px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+      width: 100%;
+      height: 60px;">
+            </sp-p>
+          </sp-div>
+
+          <sp-button id="reference" class="longBtn" variant="secondary" id="reference">Set as Reference</sp-button><br>
+          <sp-button id="clearReference" class="longBtn" variant="warning" id="reference">Clear Reference
+            Images</sp-button><br>
+
+        </sp-div>
+      </div>
 
 
+      <!-- LOG -->
+      <sp-heading size="xs" class="logArea">LOG</sp-heading>
+      <sp-divider size="small"></sp-divider>
+      <sp-textarea class="log logArea" id="log" height="200px" placeholder="Logging information">
+        <sp-label slot="label">Logging information</sp-label></sp-textarea>
+      <sp-br></sp-br>
+      <sp-button class="logArea" id="clearLog" variant="secondary">clear</sp-button>
 
     </sp-div>
 
@@ -114,32 +201,54 @@
       <!-- <sp-heading size="S">Developer</sp-heading> -->
       <sp-field-group label="settings">
 
-        <sp-checkbox id="showLog" checked>Log</sp-checkbox>
+        <sp-checkbox id="enablePrompt" checked>Enable Customised Prompt</sp-checkbox>
         <br>
 
-        <sp-checkbox id="test">Test</sp-checkbox>
+        <sp-checkbox id="hidePromptPreset">Hide Prompt Preset</sp-checkbox>
+        <br>
+
+        <sp-checkbox id="referenceImageSetting">Enable Reference Image</sp-checkbox>
+        <br>
+
+        <sp-checkbox id="hideLog">Hide Log</sp-checkbox>
+        <br>
+
+        <sp-checkbox id="test">Test Mode</sp-checkbox>
         <br>
 
         <sp-checkbox id="skipMask">Skip Layer Mask</sp-checkbox>
         <br>
 
-        <sp-checkbox disabled>Preview Image</sp-checkbox>
+        <sp-checkbox id="showModelParameter">Show Model Parameter</sp-checkbox>
+        <br>
+
+        <sp-checkbox id="previewImage">Preview Image</sp-checkbox>
         <br>
 
         <sp-checkbox disabled>Group Generated Images</sp-checkbox>
         <br>
 
-        <sp-checkbox disabled>Adaptive Resolution</sp-checkbox>
+        <sp-checkbox id="adaptiveRatioSetting">Disable Adaptive Ratio</sp-checkbox>
+        <br>
+        <sp-checkbox id="adaptiveResolutionSetting">Disable Adaptive Resolution</sp-checkbox>
+        <sp-slider id="upgradeFactorSlider" variant="filled" min="1.0" max="2.0" value="1.5" step="0.1"
+          style="width: 200px;">
+          <sp-label slot="label">Upgrade Factor</sp-label>
+        </sp-slider>
         <br>
 
       </sp-field-group>
 
+      <!-- perhaps change to type="password" -->
       <sp-heading size="xxs">API Key</sp-heading>
-      <sp-label>Google</sp-label>
-      <sp-textfield id="api-key-google" placeholder="****************"></sp-textfield>
-      <sp-label>Bytedance</sp-label>
-      <sp-textfield id="api-key-bytedance" placeholder="****************"></sp-textfield>
-
+      <sp-textfield id="api-key-google" placeholder="****************" style="width: 220px;">
+        <sp-label slot="label">Google</sp-label>
+      </sp-textfield>
+      <br>
+      <sp-textfield id="api-key-bytedance" placeholder="****************" style="width: 220px;">
+        <sp-label slot="label">Bytedance</sp-label>
+      </sp-textfield>
+      <br>
       <sp-checkbox id="showKey">Show API Key in Plaintext</sp-checkbox><br>
 
       <sp-button quiet id="update-api-key">Update</sp-button>
@@ -173,7 +282,7 @@
       <sp-heading size="xs">Copyright</sp-heading>
       <sp-label>
         AI-assisted image editing for Photoshop<br>
-        Version 0.1.0<br>
+        Version 0.1.2<br>
 
         © 2026 dw<br>
         License: GPL-3.0<br>
