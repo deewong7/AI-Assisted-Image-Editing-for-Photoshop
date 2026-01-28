@@ -4,6 +4,7 @@ const imaging = require("photoshop").imaging;
 // const fs = require("fs")
 const fs = require('uxp').storage.localFileSystem;
 const { generateWithProvider } = require("./providers/index.js");
+const utils = require("./utils");
 
 const SEEDREAM = "doubao-seedream-4-5-251128";
 const NANOBANANA_PRO = "gemini-3-pro-image-preview";
@@ -12,6 +13,25 @@ const DEFAULT_API_KEYS = Object.freeze({
   "NanoBananaPro-api-key": "",
   "SeeDream-api-key": ""
 });
+const DEFAULT_PROMPT_PRESETS = {
+  default: `现在你是一个Cosplay图片后期师，你需要按照以下规则进行处理：
+\t1.身材调整：对模特的胸部、腰部、臀部等部位进行适度膨胀，让模特的身材更加丰满且自然。
+\t2.头发优化：消除头发中所有不和谐的杂乱部分，在原有发型基础上增加3-5缕随微风飘动的头发，使头发材质呈现超写实、精致的CG质感。
+\t3.道具材质调整：
+\t所有塑料道具赋予金属质感，同时保留原有颜色。
+\t所有皮质材质变得更精致、更有质感。
+\t4.面部与皮肤美化：
+\t对模特进行皮肤和美颜调整，消除双下巴。
+\t优化下颌线，使其轮廓清晰。
+\t调整肌肤纹理均匀精致，弱化唇纹。
+\t根据模特所Cos角色判断原人设的人种特征，并进行对应风格的补妆。
+\t5.灯光调整：
+\t在现有灯光基础上增加轮廓光和补充光，以更好地展示服装材质、轮廓和人物边缘。
+\t让模特面部光线柔和，尽可能减弱面部投影。
+\t6.服装与布料优化：
+\t移除模特服装上的所有褶皱和污渍，让布料材质崭新柔顺。
+\t对裙摆、飘带等容易被风吹动的部位，适当增加飘动效果。`
+};
 let TEMPERATURE = 0.6;
 let TOP_P = 0.95;
 
@@ -152,15 +172,11 @@ async function getImageDataToBase64(bounds) {
 // As the API server returns Base64 representation of image,
 // we need to convert it to ArrayBuffer for UXP file write
 function base64ToArrayBuffer(base64) {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
+  const buffer = utils.base64ToArrayBuffer(base64);
+  const bytes = new Uint8Array(buffer);
   logLine("Received server byte length: " + bytes.byteLength)
   console.log("converted base64 to buffer, byte length: " + bytes.byteLength);
-  return bytes.buffer;
+  return buffer;
 }
 
 // 1. Read the server returned base64 string
@@ -320,23 +336,12 @@ async function placeToCurrentdocAtSelection(base64, bounds, suffix = "") {
   }
 }
 
-// adaptive res
-const BASE = {
-  "1K": 1024,
-  "2K": 2048,
-  "4K": 4096
-};
 function pickTier(longEdge, upgradeFactor = 1.5) {
-  if (longEdge <= BASE["1K"] * upgradeFactor) {
-    if (SELECTEDMODEL === SEEDREAM) {
-      return "2K";
-    }
-    return "1K";
-  }
-  if (longEdge <= BASE["2K"] * upgradeFactor) {
-    return "2K";
-  }
-  return "4K";
+  return utils.pickTier(longEdge, {
+    upgradeFactor,
+    selectedModel: SELECTEDMODEL,
+    seedreamModelId: SEEDREAM
+  });
 }
 
 
@@ -621,11 +626,7 @@ function lockParameter(e) {
 }
 
 function getCurrentTime() {
-  const now = new Date();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
-  return `[${hours}:${minutes}:${seconds}]`;
+  return utils.getCurrentTime();
 }
 
 function logLine(...text) {
@@ -774,21 +775,11 @@ updateModel(SELECTEDMODEL);
 
 
 function saveKeysToLocalStorage() {
-  localStorage.setItem("apiKeys", JSON.stringify(apiKey));
+  utils.saveKeysToStorage(localStorage, apiKey);
 }
 
 function loadKeysFromLocalStorage() {
-  const raw = localStorage.getItem("apiKeys");
-  if (!raw) {
-    return { ...DEFAULT_API_KEYS };
-  }
-
-  try {
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULT_API_KEYS, ...parsed };
-  } catch {
-    return { ...DEFAULT_API_KEYS };
-  }
+  return utils.loadKeysFromStorage(localStorage, DEFAULT_API_KEYS);
 }
 
 async function pushReferenceImage() {
@@ -877,46 +868,11 @@ document.getElementById("referenceImageSetting").addEventListener("click", (e) =
  * }
  */
 function loadDefaultPresetFromLocalStorage() {
-
-  // only if there is not a preset object inside localstorage
-  const raw = localStorage.getItem('promptPresets');
-  const defaultPresets = {
-    // name: "value"
-    // from 夏三七抖音直播间
-    default: `现在你是一个Cosplay图片后期师，你需要按照以下规则进行处理：
-	1.身材调整：对模特的胸部、腰部、臀部等部位进行适度膨胀，让模特的身材更加丰满且自然。
-	2.头发优化：消除头发中所有不和谐的杂乱部分，在原有发型基础上增加3-5缕随微风飘动的头发，使头发材质呈现超写实、精致的CG质感。
-	3.道具材质调整：
-	所有塑料道具赋予金属质感，同时保留原有颜色。
-	所有皮质材质变得更精致、更有质感。
-	4.面部与皮肤美化：
-	对模特进行皮肤和美颜调整，消除双下巴。
-	优化下颌线，使其轮廓清晰。
-	调整肌肤纹理均匀精致，弱化唇纹。
-	根据模特所Cos角色判断原人设的人种特征，并进行对应风格的补妆。
-	5.灯光调整：
-	在现有灯光基础上增加轮廓光和补充光，以更好地展示服装材质、轮廓和人物边缘。
-	让模特面部光线柔和，尽可能减弱面部投影。
-	6.服装与布料优化：
-	移除模特服装上的所有褶皱和污渍，让布料材质崭新柔顺。
-	对裙摆、飘带等容易被风吹动的部位，适当增加飘动效果。`
-  };
-
-  if (!raw) {
-    localStorage.setItem('promptPresets', JSON.stringify(defaultPresets));
-    return defaultPresets;
-  }
-
-  try {
-    return JSON.parse(raw);
-  } catch {
-    localStorage.setItem('promptPresets', JSON.stringify(defaultPresets));
-    return defaultPresets;
-  }
+  return utils.loadPromptPresetsFromStorage(localStorage, DEFAULT_PROMPT_PRESETS);
 }
 
 function savePromptPresetToLocalStorage() {
-  localStorage.setItem('promptPresets', JSON.stringify(promptPresets));
+  utils.savePromptPresetsToStorage(localStorage, promptPresets);
 }
 
 function onloadPreset() {
