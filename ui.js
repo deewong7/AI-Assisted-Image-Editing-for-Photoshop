@@ -52,6 +52,7 @@ function getUI() {
     referenceButton: document.getElementById("reference"),
     clearReferenceButton: document.getElementById("clearReference"),
     referenceImageSetting: document.getElementById("referenceImageSetting"),
+    enableTextToImage: document.getElementById("enableTextToImage"),
     referenceImage: document.getElementById("referenceImage"),
     refImagePreview: document.getElementById("refImagePreview"),
     refImagePreviewDiv: document.getElementById("refImagePreviewDiv"),

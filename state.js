@@ -43,6 +43,7 @@ function createState({ ui, apiKey, promptPresets } = {}) {
     topP: 0.95,
     imageArray: [],
     skipMask: false,
+    textToImage: false,
     apiKey: apiKey || { ...DEFAULT_API_KEYS },
     promptPresets: promptPresets || { ...DEFAULT_PROMPT_PRESETS }
   };

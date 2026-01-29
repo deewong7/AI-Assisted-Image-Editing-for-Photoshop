@@ -230,6 +230,15 @@ function bindEvents({
     });
   }
 
+  if (ui.enableTextToImage) {
+    ui.enableTextToImage.addEventListener("click", (e) => {
+      state.textToImage = e.target.checked;
+      if (state.textToImage) {
+        clearImagePreview(ui);
+      }
+    });
+  }
+
   if (ui.adaptiveRatioSetting) {
     ui.adaptiveRatioSetting.addEventListener("click", (e) => {
       if (ui.ratioPicker) {
