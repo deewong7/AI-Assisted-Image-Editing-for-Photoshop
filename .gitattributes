@@ -1,0 +1,5 @@
+.github/ export-ignore
+.vscode/ export-ignore
+tests/ export-ignore
+watch.sh export-ignore
+.gitignore export-ignore

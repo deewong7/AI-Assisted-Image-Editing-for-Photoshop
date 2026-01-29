@@ -53,28 +53,33 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
       ui.generateButton.disabled = true;
     }
 
+    const shouldFetchBase64 = !state.textToImage || state.selectedModel === "localtest";
     let base64Data;
-    try {
-      base64Data = await selection.getImageDataToBase64(bounds);
-    } catch (error) {
-      if (typeof logLine === "function") {
-        logLine("Check log for more detailed error message.");
+    if (shouldFetchBase64) {
+      try {
+        base64Data = await selection.getImageDataToBase64(bounds);
+      } catch (error) {
+        if (typeof logLine === "function") {
+          logLine("Check log for more detailed error message.");
+        }
+      } finally {
+        if (ui.generateButton) {
+          ui.generateButton.disabled = false;
+        }
       }
-    } finally {
-      if (ui.generateButton) {
-        ui.generateButton.disabled = false;
+
+      if (!base64Data || base64Data.length === 0) {
+        console.log("No base64 data obtained from selection. Aborting.");
+        if (typeof logLine === "function") {
+          logLine("No base64 data obtained from selection. Aborting.");
+        }
+        return;
       }
+    } else if (ui.generateButton) {
+      ui.generateButton.disabled = false;
     }
 
-    if (!base64Data || base64Data.length === 0) {
-      console.log("No base64 data obtained from selection. Aborting.");
-      if (typeof logLine === "function") {
-        logLine("No base64 data obtained from selection. Aborting.");
-      }
-      return;
-    }
-
-    if (ui.imageToProcess) {
+    if (!state.textToImage && ui.imageToProcess && base64Data) {
       ui.imageToProcess.innerHTML = "<image src='data:image/png;base64," + base64Data + "'></image>";
       console.log("image base64 length: " + base64Data.length);
     }
@@ -100,6 +105,7 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
           resolution: state.resolution,
           aspectRatio: state.aspectRatio,
           referenceImages: state.imageArray,
+          textToImage: state.textToImage,
           apiKey: state.apiKey,
           showModelParameters: state.showModelParameters,
           temperature: state.temperature,

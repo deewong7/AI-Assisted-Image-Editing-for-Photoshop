@@ -11,13 +11,14 @@ async function generateImage(options) {
     temperature,
     topP,
     modelId,
-    logLine
+    logLine,
+    textToImage = false
   } = options || {};
 
   if (prompt.length <= 1) {
     return;
   }
-  if (!base64Image) {
+  if (!base64Image && !textToImage) {
     console.log("No base64 image data provided for generateContent.");
     return;
   }
@@ -64,22 +65,25 @@ async function generateImage(options) {
     ]
   };
 
-  if (referenceImages.length >= 1) {
-    referenceImages.forEach(base64 => {
-      requestBody.contents[0].parts.push({
-        inlineData: {
-          mimeType: "image/png",
-          data: base64
-        }
+  if (!textToImage) {
+    if (referenceImages.length >= 1) {
+      referenceImages.forEach(base64 => {
+        requestBody.contents[0].parts.push({
+          inlineData: {
+            mimeType: "image/png",
+            data: base64
+          }
+        });
       });
-    });
+    }
+
+    const inlineData = {
+      mimeType: "image/png",
+      data: base64Image
+    };
+    requestBody.contents[0].parts.push({ inlineData });
   }
 
-  const inlineData = {
-    mimeType: "image/png",
-    data: base64Image
-  };
-  requestBody.contents[0].parts.push({ inlineData });
   requestBody.contents[0].parts.push({ text: prompt });
 
   const url = `${API_ENDPOINT}/v1/publishers/google/models/${MODEL_ID}:${GENERATE_CONTENT_API}?key=${API_KEY}`;
