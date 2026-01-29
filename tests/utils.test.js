@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const utils = require("../utils");
+const utils = require("../utils.js");
 
 function createStorage(initial = {}) {
   const store = { ...initial };

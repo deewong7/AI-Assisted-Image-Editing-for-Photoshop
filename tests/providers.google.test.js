@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { generateImage } = require("../providers/google");
+const { generateImage } = require("../providers/google.js");
 
 test.describe("generateImage (google)", () => {
   test("returns undefined for short prompt", async (t) => {
