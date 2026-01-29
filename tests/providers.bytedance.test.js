@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { generateImage } = require("../providers/bytedance");
+const { generateImage } = require("../providers/bytedance.js");
 
 test.describe("generateImage (bytedance)", () => {
   test("returns undefined for short prompt", async (t) => {

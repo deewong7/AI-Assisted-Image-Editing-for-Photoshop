@@ -1,8 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const bytedance = require("../providers/bytedance");
-const google = require("../providers/google");
-const { providerMap, generateWithProvider } = require("../providers/index");
+const bytedance = require("../providers/bytedance.js");
+const google = require("../providers/google.js");
+const { providerMap, generateWithProvider } = require("../providers/index.js");
 
 test.describe("providerMap (index)", () => {
   test("includes supported models", () => {
