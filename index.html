@@ -32,11 +32,11 @@
         <sp-divider size="small"></sp-divider>
         <!-- Select models -->
         <sp-picker placeholder="Choose a model..." , style="width: 220px">
-          <sp-menu id="modelPicker" slot="options">
-            <sp-menu-item value="doubao-seedream-4-5-251128">SeeDream 4.5</sp-menu-item>
-            <sp-menu-item value="gemini-3-pro-image-preview" selected>Nano Banana Pro 🍌</sp-menu-item>
-            <!-- <sp-menu-item disabled value="grok-2-image">Grok 2 Image</sp-menu-item>
-            <sp-menu-item disabled value="flux2.max">FLUX.2[MAX]</sp-menu-item>
+            <sp-menu id="modelPicker" slot="options">
+              <sp-menu-item value="doubao-seedream-4-5-251128">SeeDream 4.5</sp-menu-item>
+              <sp-menu-item value="gemini-3-pro-image-preview" selected>Nano Banana Pro 🍌</sp-menu-item>
+            <sp-menu-item value="grok-imagine-image">Grok Imagine</sp-menu-item>
+            <!-- <sp-menu-item disabled value="flux2.max">FLUX.2[MAX]</sp-menu-item>
             <sp-menu-item disabled value="z-image">Z-Image</sp-menu-item> -->
           </sp-menu>
         </sp-picker>
@@ -80,10 +80,6 @@
           <sp-label slot="label">top_P</sp-label>
         </sp-slider>
 
-      </sp-div>
-
-      <sp-div id="grokModel">
-        <sp-checkbox id="allowNSFW" checked>Allow NSFW</sp-checkbox>
       </sp-div>
 
       <!-- <sp-divider></sp-divider> -->
@@ -202,6 +198,9 @@
       <!-- <sp-heading size="S">Developer</sp-heading> -->
       <sp-field-group label="settings">
 
+        <sp-checkbox id="allowNSFW" style="display: none;" checked>Allow NSFW</sp-checkbox>
+        <br>
+
         <sp-checkbox id="enablePrompt" checked>Enable Customised Prompt</sp-checkbox>
         <br>
 
@@ -253,6 +252,10 @@
         <sp-label slot="label">Bytedance</sp-label>
       </sp-textfield>
       <br>
+      <sp-textfield id="api-key-xai" placeholder="****************" style="width: 220px;">
+        <sp-label slot="label">xAI</sp-label>
+      </sp-textfield>
+      <br>
       <sp-checkbox id="showKey">Show API Key in Plaintext</sp-checkbox><br>
 
       <sp-button quiet id="update-api-key">Update</sp-button>
@@ -286,7 +289,7 @@
       <sp-heading size="xs">Copyright</sp-heading>
       <sp-label>
         AI-assisted image editing for Photoshop<br>
-        Version 0.1.4-alpha<br>
+        Version 0.1.5-alpha<br>
 
         © 2026 dw<br>
         License: GPL-3.0<br>

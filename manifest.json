@@ -1,7 +1,7 @@
 {
   "id": "io.github.deewong7.ai-assisted-image-editing-for-ps-vanilla",
   "name": "AI-assisted Image Editing for Photoshop Vanilla",
-  "version": "0.1.4-alpha",
+  "version": "0.1.5-alpha",
   "main": "index.html",
   "host": {
     "app": "PS",
@@ -13,7 +13,8 @@
       "domains": [
         "https://dummyjson.com",
         "https://aiplatform.googleapis.com",
-        "https://ark.cn-beijing.volces.com"
+        "https://ark.cn-beijing.volces.com",
+        "https://api.x.ai"
       ]
     },
     "launchProcess": {

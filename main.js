@@ -13,7 +13,7 @@ const { getUI } = require("./ui");
 const {
   SEEDREAM,
   NANOBANANA_PRO,
-  GROK_2_IMAGE,
+  GROK_IMAGINE,
   DEFAULT_API_KEYS,
   DEFAULT_PROMPT_PRESETS,
   createState
@@ -68,7 +68,7 @@ entrypoints.setup({
 initializeUI({
   ui,
   state,
-  models: { SEEDREAM, NANOBANANA_PRO, GROK_2_IMAGE },
+  models: { SEEDREAM, NANOBANANA_PRO, GROK_IMAGINE },
   logger,
   storage
 });
@@ -76,7 +76,7 @@ initializeUI({
 bindEvents({
   ui,
   state,
-  models: { SEEDREAM, NANOBANANA_PRO, GROK_2_IMAGE },
+  models: { SEEDREAM, NANOBANANA_PRO, GROK_IMAGINE },
   logger,
   storage,
   generator,
