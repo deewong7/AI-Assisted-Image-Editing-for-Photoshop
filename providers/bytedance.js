@@ -8,7 +8,8 @@ async function generateImage(options) {
     resolution,
     aspectRatio,
     referenceImages = [],
-    modelId
+    modelId,
+    textToImage = false
   } = options || {};
 
   if (prompt.length <= 1) {
@@ -26,7 +27,11 @@ async function generateImage(options) {
   }
 
   let image;
-  if (referenceImages.length >= 1) {
+  if (textToImage) {
+    if (referenceImages.length >= 1) {
+      image = referenceImages.map(data => `data:image/png;base64,${data}`);
+    }
+  } else if (referenceImages.length >= 1) {
     const b64Arr = referenceImages.map(data => `data:image/png;base64,${data}`);
     b64Arr.push(`data:image/png;base64,${base64Image}`);
     image = b64Arr;
@@ -44,7 +49,7 @@ async function generateImage(options) {
       body: JSON.stringify({
         model: modelId || supportedModels[0],
         prompt: effectivePrompt,
-        image,
+        ...(typeof image !== "undefined" ? { image } : {}),
         size: effectiveResolution,
         watermark: false,
         response_format: "b64_json",
