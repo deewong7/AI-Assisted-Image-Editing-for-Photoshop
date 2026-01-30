@@ -22,6 +22,7 @@ Bring state-of-the-art image generation and edits directly into Photoshop. This 
 ## Supported models
 - Google: Nano Banana Pro 3
 - ByteDance: SeeDream 4.5
+- xAI: Grok Imagine
 
 ## Quick start
 1) Install the plugin by extracting source code into `Plug-ins` folder of your photoshop (**restart required**).
@@ -34,6 +35,7 @@ Bring state-of-the-art image generation and edits directly into Photoshop. This 
 Choose one or both:
 - Google API key: [Google Vertex AI](https://cloud.google.com/vertex-ai?hl=en)
 - ByteDance API key: [Volcengine](https://console.volcengine.com/ark/region:ark+cn-beijing/openManagement?LLM=%7B%7D&advancedActiveKey=model&tab=ComputerVision)
+- xAI API Key: [xAI ](https://console.x.ai/team/350bf501-bfe9-4f7b-91bc-62ce42bffd22)
 
 ## Screenshots
 ### Main Page
