@@ -9,6 +9,7 @@ function getUI() {
     aspectRatioPicker: document.getElementById("aspectRatioPicker"),
     ratioPicker: document.getElementById("ratioPicker"),
     promptInput: document.getElementById("promptInput"),
+    jobCount: document.getElementById("jobCount"),
     promptPicker: document.getElementById("promptPicker"),
     promptPresetTextarea: document.getElementById("promptPresetTextarea"),
     newPresetName: document.getElementById("newPresetName"),
@@ -164,6 +165,17 @@ function clearReferencePreview(ui) {
   }
 }
 
+function renderJobCount(ui, count) {
+  if (!ui.jobCount) return;
+  if (count >= 1) {
+    ui.jobCount.style.display = "";
+    ui.jobCount.textContent = `Current Jobs: ${count}`;
+  } else {
+    ui.jobCount.style.display = "none";
+    ui.jobCount.textContent = "";
+  }
+}
+
 module.exports = {
   getUI,
   renderModelUI,
@@ -171,5 +183,6 @@ module.exports = {
   setImagePreview,
   clearImagePreview,
   appendReferencePreview,
-  clearReferencePreview
+  clearReferencePreview,
+  renderJobCount
 };

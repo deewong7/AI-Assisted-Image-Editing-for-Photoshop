@@ -44,6 +44,7 @@ function createState({ ui, apiKey, promptPresets } = {}) {
     imageArray: [],
     skipMask: false,
     textToImage: false,
+    currentJobCount: 0,
     apiKey: apiKey || { ...DEFAULT_API_KEYS },
     promptPresets: promptPresets || { ...DEFAULT_PROMPT_PRESETS }
   };
