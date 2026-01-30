@@ -106,6 +106,7 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
         const topPInput = parseFloat(ui.topP?.value);
         state.temperature = Number.isFinite(temperatureInput) ? temperatureInput : 1.0;
         state.topP = Number.isFinite(topPInput) ? topPInput : 0.90;
+        const nsfw = ui.allowNSFW.checked;
 
         generatedBase64 = await generateWithProvider(state.selectedModel, {
           prompt,
@@ -118,7 +119,8 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
           showModelParameters: state.showModelParameters,
           temperature: state.temperature,
           topP: state.topP,
-          logLine
+          logLine,
+          nsfw
         });
       }
     } catch (error) {

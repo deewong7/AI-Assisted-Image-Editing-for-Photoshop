@@ -1,7 +1,8 @@
 const bytedance = require("./bytedance");
 const google = require("./google");
+const xai = require("./xai");
 
-const providerList = [bytedance, google];
+const providerList = [bytedance, google, xai];
 const providerMap = {};
 
 providerList.forEach(provider => {

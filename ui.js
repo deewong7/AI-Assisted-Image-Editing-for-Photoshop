@@ -48,6 +48,7 @@ function getUI() {
     upgradeFactorSlider: document.getElementById("upgradeFactorSlider"),
     apiKeyGoogle: document.getElementById("api-key-google"),
     apiKeyBytedance: document.getElementById("api-key-bytedance"),
+    apiKeyXai: document.getElementById("api-key-xai"),
     updateApiKey: document.getElementById("update-api-key"),
     showKey: document.getElementById("showKey"),
     referenceButton: document.getElementById("reference"),
@@ -81,7 +82,7 @@ function renderModelUI(ui, state, models, logLine) {
       state.selectedModel === models.NANOBANANA_PRO && state.showModelParameters ? "" : "none";
   }
 
-  if (state.selectedModel === models.GROK_2_IMAGE) {
+  if (state.selectedModel === models.GROK_IMAGINE) {
     if (ui.allowNSFW) {
       ui.allowNSFW.style.display = "";
     }

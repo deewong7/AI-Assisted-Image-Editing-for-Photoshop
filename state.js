@@ -1,10 +1,11 @@
 const SEEDREAM = "doubao-seedream-4-5-251128";
 const NANOBANANA_PRO = "gemini-3-pro-image-preview";
-const GROK_2_IMAGE = "grok-2-image";
+const GROK_IMAGINE = "grok-imagine-image";
 
 const DEFAULT_API_KEYS = Object.freeze({
   "NanoBananaPro-api-key": "",
-  "SeeDream-api-key": ""
+  "SeeDream-api-key": "",
+  "xAI-api-key": ""
 });
 
 const DEFAULT_PROMPT_PRESETS = {
@@ -53,7 +54,7 @@ function createState({ ui, apiKey, promptPresets } = {}) {
 module.exports = {
   SEEDREAM,
   NANOBANANA_PRO,
-  GROK_2_IMAGE,
+  GROK_IMAGINE,
   DEFAULT_API_KEYS,
   DEFAULT_PROMPT_PRESETS,
   createState

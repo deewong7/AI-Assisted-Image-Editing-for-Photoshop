@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const bytedance = require("../providers/bytedance.js");
 const google = require("../providers/google.js");
+const xai = require("../providers/xai.js");
 const { providerMap, generateWithProvider } = require("../providers/index.js");
 
 test.describe("providerMap (index)", () => {
@@ -10,6 +11,9 @@ test.describe("providerMap (index)", () => {
       assert.equal(typeof providerMap[model]?.generateImage, "function");
     }
     for (const model of google.supportedModels) {
+      assert.equal(typeof providerMap[model]?.generateImage, "function");
+    }
+    for (const model of xai.supportedModels) {
       assert.equal(typeof providerMap[model]?.generateImage, "function");
     }
   });

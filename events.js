@@ -8,7 +8,8 @@ const {
 
 const KEY_MAP = [
   { fieldKey: "apiKeyGoogle", keyName: "NanoBananaPro-api-key" },
-  { fieldKey: "apiKeyBytedance", keyName: "SeeDream-api-key" }
+  { fieldKey: "apiKeyBytedance", keyName: "SeeDream-api-key" },
+  { fieldKey: "apiKeyXai", keyName: "xAI-api-key" }
 ];
 
 function updateApiKey(ui, state, storage, update = true) {
