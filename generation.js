@@ -1,3 +1,4 @@
+const { setImagePreview, renderJobCount } = require('./ui.js')
 function createGenerator({ app, core, ui, state, selection, placer, generateWithProvider, logLine, utils, seedreamModelId }) {
   async function generate() {
     if (ui.testCheckbox && ui.testCheckbox.checked) {
@@ -80,15 +81,22 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
     }
 
     if (!state.textToImage && ui.imageToProcess && base64Data) {
-      ui.imageToProcess.innerHTML = "<image src='data:image/png;base64," + base64Data + "'></image>";
+      setImagePreview(ui, base64Data);
       console.log("image base64 length: " + base64Data.length);
     }
 
     let generatedBase64 = null;
+    let jobCountIncremented = false;
     try {
       if (typeof logLine === "function") {
         logLine("Fetching " + state.resolution + " image to " + state.selectedModel);
       }
+
+
+      state.currentJobCount = Math.max(0, (state.currentJobCount || 0) + 1);
+      renderJobCount(ui, state.currentJobCount);
+      jobCountIncremented = true;
+
       if (state.selectedModel === "localtest") {
         const sleep = ms => new Promise(r => setTimeout(r, ms));
         await sleep(3000);
@@ -119,6 +127,11 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
         logLine("Error during remote API call:\n" + error.message);
       }
       return;
+    } finally {
+      if (jobCountIncremented) {
+        state.currentJobCount = Math.max(0, (state.currentJobCount || 0) - 1);
+        renderJobCount(ui, state.currentJobCount);
+      }
     }
 
     try {

@@ -62,10 +62,6 @@ sp-action-button[quiet] {
   padding-bottom: 0%;
 }
 
-sp-button.shortBtn {
-  width: 10px;
-}
-
 sp-button.longBtn {
   width: 220px;
 }
@@ -99,3 +95,13 @@ textarea {
   align-self: flex-end;
   gap: 8px;
 }
+
+#generate {
+  width: 219px;
+  height: 26px;
+  min-height: 8px;
+  padding: 0 8px;
+  line-height: 10px;
+  font-size: 13px;
+}
+
