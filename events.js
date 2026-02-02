@@ -175,6 +175,9 @@ function bindEvents({
   if (ui.updateApiKey) {
     ui.updateApiKey.addEventListener("click", () => {
       updateApiKey(ui, state, storage, true);
+      if (ui.showKey) {
+        ui.showKey.checked = false;
+      }
     });
   }
 
