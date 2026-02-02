@@ -98,7 +98,7 @@ async function generateImage(options) {
       let errorMessage = `API call failed with status ${res.status} ${res.statusText}`;
       try {
         const errorData = await res.json();
-        errorMessage = errorData?.error;
+        errorMessage = errorData?.error?.message || errorData?.error ;
       } catch {
         try {
           const errorText = await res.text();
