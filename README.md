@@ -35,7 +35,7 @@ Bring state-of-the-art image generation and edits directly into Photoshop. This 
 Choose one or both:
 - Google API key: [Google Vertex AI](https://cloud.google.com/vertex-ai?hl=en)
 - ByteDance API key: [Volcengine](https://console.volcengine.com/ark/region:ark+cn-beijing/openManagement?LLM=%7B%7D&advancedActiveKey=model&tab=ComputerVision)
-- xAI API Key: [xAI ](https://console.x.ai/team/350bf501-bfe9-4f7b-91bc-62ce42bffd22)
+- xAI API Key: [xAI](https://console.x.ai/)
 
 ## Screenshots
 ### Main Page
