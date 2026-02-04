@@ -86,17 +86,19 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
     }
 
     let generatedBase64 = null;
+    let elapsedSeconds = null;
+    let jobStartMs = null;
     let jobCountIncremented = false;
     try {
       if (typeof logLine === "function") {
         logLine("Fetching " + state.resolution + " image to " + state.selectedModel);
       }
 
-
       state.currentJobCount = Math.max(0, (state.currentJobCount || 0) + 1);
       renderJobCount(ui, state.currentJobCount);
       jobCountIncremented = true;
 
+      jobStartMs = Date.now();
       if (state.selectedModel === "localtest") {
         const sleep = ms => new Promise(r => setTimeout(r, ms));
         await sleep(3000);
@@ -130,6 +132,7 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
       }
       return;
     } finally {
+      elapsedSeconds = Math.round((Date.now() - jobStartMs) / 1000);
       if (jobCountIncremented) {
         state.currentJobCount = Math.max(0, (state.currentJobCount || 0) - 1);
         renderJobCount(ui, state.currentJobCount);
@@ -148,6 +151,15 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
       console.error("Error placing generated image to document: " + error);
       if (typeof logLine === "function") {
         logLine("Error placing generated image to document: " + error);
+      }
+    } finally {
+      if (elapsedSeconds !== null) {
+        const status = generatedBase64 ? "finished" : "failed";
+        const message = `Job ${status} after ${elapsedSeconds} seconds - ${state.selectedModel}`;
+        console.log(message);
+        if (typeof logLine === "function") {
+          logLine(message);
+        }
       }
     }
   }
