@@ -98,7 +98,7 @@ test.describe("generateImage (xai)", () => {
 
     const body = JSON.parse(lastCall.options.body);
     assert.equal(body.response_format, "b64_json");
-    assert.equal(body.resolution, "2k");
+    assert.equal(body.resolution, "1k");
     assert.notStrictEqual(body.image, { url: 'data:image/png;base64,BASE' });
     assert.equal(body.aspect_ratio, undefined);
   });

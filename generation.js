@@ -1,5 +1,5 @@
 const { setImagePreview, renderJobCount } = require('./ui.js')
-function createGenerator({ app, core, ui, state, selection, placer, generateWithProvider, logLine, utils, seedreamModelId }) {
+function createGenerator({ app, core, ui, state, selection, placer, generateWithProvider, logLine, utils, seedreamModelId, grokModelId }) {
   async function generate() {
     if (ui.testCheckbox && ui.testCheckbox.checked) {
       state.selectedModel = "localtest";
@@ -32,6 +32,9 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
         selectedModel: state.selectedModel,
         seedreamModelId
       });
+    }
+    if (grokModelId && state.selectedModel === grokModelId) {
+      state.resolution = "1K";
     }
 
     const prompt = ui.promptInput?.value.trim();

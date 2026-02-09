@@ -65,6 +65,16 @@ function getUI() {
 function renderModelUI(ui, state, models, logLine) {
   if (typeof state.selectedModel === "undefined") return;
 
+  if (ui.resolutionOption1K) {
+    ui.resolutionOption1K.style.display = "";
+  }
+  if (ui.resolutionOption2K) {
+    ui.resolutionOption2K.style.display = "";
+  }
+  if (ui.resolutionOption4K) {
+    ui.resolutionOption4K.style.display = "";
+  }
+
   if (state.selectedModel === models.SEEDREAM) {
     if (ui.resolutionOption1K) {
       ui.resolutionOption1K.style.display = "none";
@@ -73,8 +83,19 @@ function renderModelUI(ui, state, models, logLine) {
       ui.resolutionOption2K.selected = true;
       state.resolution = "2K";
     }
-  } else if (ui.resolutionOption1K) {
-    ui.resolutionOption1K.style.display = "";
+  } else if (state.selectedModel === models.GROK_IMAGINE) {
+    if (ui.resolutionOption2K) {
+      ui.resolutionOption2K.style.display = "none";
+      ui.resolutionOption2K.selected = false;
+    }
+    if (ui.resolutionOption4K) {
+      ui.resolutionOption4K.style.display = "none";
+      ui.resolutionOption4K.selected = false;
+    }
+    if (ui.resolutionOption1K) {
+      ui.resolutionOption1K.selected = true;
+      state.resolution = "1K";
+    }
   }
 
   if (ui.googleModel) {
@@ -86,16 +107,7 @@ function renderModelUI(ui, state, models, logLine) {
     if (ui.allowNSFW) {
       ui.allowNSFW.style.display = "";
     }
-    if (ui.resolutionOption2K) {
-      ui.resolutionOption2K.selected = true;
-    }
-    if (ui.resolutionOption4K) {
-      ui.resolutionOption4K.style.display = "none";
-    }
   } else {
-    if (ui.resolutionOption4K) {
-      ui.resolutionOption4K.style.display = "";
-    }
     if (ui.allowNSFW) {
       ui.allowNSFW.style.display = "none";
     }
