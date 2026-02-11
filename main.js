@@ -53,7 +53,8 @@ const generator = createGenerator({
   generateWithProvider,
   logLine: logger.logLine,
   utils,
-  seedreamModelId: SEEDREAM
+  seedreamModelId: SEEDREAM,
+  grokModelId: GROK_IMAGINE
 });
 
 entrypoints.setup({
