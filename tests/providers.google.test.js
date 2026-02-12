@@ -35,7 +35,7 @@ test.describe("generateImage (google)", () => {
     assert.equal(called, false);
   });
 
-  test("builds request and returns b64", async (t) => {
+  test("uses vertex endpoint when API key starts with AQ", async (t) => {
     const originalFetch = global.fetch;
     let lastCall;
     global.fetch = async (url, options) => {
@@ -60,7 +60,7 @@ test.describe("generateImage (google)", () => {
     const result = await generateImage({
       prompt: "hello",
       base64Image: "BASE",
-      apiKey: { "NanoBananaPro-api-key": "KEY" },
+      apiKey: { "NanoBananaPro-api-key": "AQ_KEY" },
       resolution: "2K",
       aspectRatio: "3:4",
       referenceImages: ["REF"],
@@ -69,16 +69,64 @@ test.describe("generateImage (google)", () => {
 
     assert.equal(result, "RESULT");
     assert.ok(lastCall);
-    assert.match(lastCall.url, /custom-model:generateContent\?key=KEY$/);
+    assert.match(lastCall.url, /^https:\/\/aiplatform\.googleapis\.com\/v1\/publishers\/google\/models\/custom-model:generateContent\?key=AQ_KEY$/);
 
     const body = JSON.parse(lastCall.options.body);
+    assert.deepEqual(body.generationConfig.responseModalities, ["IMAGE"]);
     assert.equal(body.generationConfig.temperature, 1.0);
     assert.equal(body.generationConfig.topP, 0.9);
     assert.equal(body.generationConfig.imageConfig.imageSize, "2K");
     assert.equal(body.generationConfig.imageConfig.aspectRatio, "3:4");
+    assert.equal(body.generationConfig.imageConfig.imageOutputOptions.mimeType, "image/png");
+    assert.equal(body.generationConfig.imageConfig.personGeneration, "ALLOW_ALL");
     assert.equal(body.contents[0].parts[0].inlineData.data, "REF");
     assert.equal(body.contents[0].parts[1].inlineData.data, "BASE");
     assert.equal(body.contents[0].parts[2].text, "hello");
+    assert.equal(lastCall.options.headers["x-goog-api-key"], undefined);
+  });
+
+  test("uses AI Studio endpoint when API key does not start with AQ", async (t) => {
+    const originalFetch = global.fetch;
+    let lastCall;
+    global.fetch = async (url, options) => {
+      lastCall = { url, options };
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [{ text: "Generated" }, { inlineData: { data: "RESULT_AI_STUDIO" } }]
+              }
+            }
+          ]
+        })
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    const result = await generateImage({
+      prompt: "hello",
+      base64Image: "BASE",
+      apiKey: { "NanoBananaPro-api-key": "AIza_TEST_KEY" },
+      resolution: "2K",
+      modelId: "custom-model"
+    });
+
+    assert.equal(result, "RESULT_AI_STUDIO");
+    assert.ok(lastCall);
+    assert.equal(
+      lastCall.url,
+      "https://generativelanguage.googleapis.com/v1beta/models/custom-model:generateContent"
+    );
+    assert.equal(lastCall.options.headers["x-goog-api-key"], "AIza_TEST_KEY");
+    const body = JSON.parse(lastCall.options.body);
+    assert.deepEqual(body.generationConfig.responseModalities, ["IMAGE"]);
+    assert.equal(body.generationConfig.imageConfig.imageSize, "2K");
+    assert.equal(body.generationConfig.imageConfig.imageOutputOptions, undefined);
+    assert.equal(body.generationConfig.imageConfig.personGeneration, undefined);
   });
 
   test("throws on non-ok response", async (t) => {

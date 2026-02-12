@@ -24,20 +24,24 @@ async function generateImage(options) {
   }
 
   const API_KEY = apiKey["NanoBananaPro-api-key"];
-  const API_ENDPOINT = "https://aiplatform.googleapis.com";
+  const VERTEX_API_ENDPOINT = "https://aiplatform.googleapis.com";
+  const AI_STUDIO_API_ENDPOINT = "https://generativelanguage.googleapis.com";
+  const useVertexApi = typeof API_KEY === "string" && API_KEY.startsWith("AQ");
   const MODEL_ID = modelId || supportedModels[0];
   const GENERATE_CONTENT_API = "generateContent";
   const safeTemperature = Number.isFinite(temperature) ? temperature : 1.0;
   const safeTopP = Number.isFinite(topP) ? topP : 0.90;
 
-  const imageConfig = {
-    imageOutputOptions: {
+  const imageConfig = {};
+  if (resolution) {
+    imageConfig.imageSize = resolution;
+  }
+  if (useVertexApi) {
+    imageConfig.imageOutputOptions = {
       mimeType: "image/png",
-    },
-    personGeneration: "ALLOW_ALL"
-  };
-
-  imageConfig.imageSize = resolution;
+    };
+    imageConfig.personGeneration = "ALLOW_ALL";
+  }
 
   if (aspectRatio && aspectRatio !== "default" && aspectRatio !== "none") {
     imageConfig.aspectRatio = aspectRatio;
@@ -86,13 +90,16 @@ async function generateImage(options) {
 
   requestBody.contents[0].parts.push({ text: prompt });
 
-  const url = `${API_ENDPOINT}/v1/publishers/google/models/${MODEL_ID}:${GENERATE_CONTENT_API}?key=${API_KEY}`;
+  const url = useVertexApi
+    ? `${VERTEX_API_ENDPOINT}/v1/publishers/google/models/${MODEL_ID}:${GENERATE_CONTENT_API}?key=${API_KEY}`
+    : `${AI_STUDIO_API_ENDPOINT}/v1beta/models/${MODEL_ID}:${GENERATE_CONTENT_API}`;
 
   try {
     const response = await fetch(url, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        ...(useVertexApi ? {} : { "x-goog-api-key": API_KEY })
       },
       body: JSON.stringify(requestBody)
     });
@@ -128,7 +135,8 @@ async function generateImage(options) {
         logLine("JSON object finished parsing.");
       }
       const candidate = json.candidates?.[0];
-      const responseData = candidate?.content?.parts?.[0]?.inlineData;
+      const imagePart = candidate?.content?.parts?.find(part => part?.inlineData?.data);
+      const responseData = imagePart?.inlineData;
       if (responseData?.data) {
         return responseData.data;
       }
