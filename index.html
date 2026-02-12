@@ -34,6 +34,7 @@
         <sp-picker placeholder="Choose a model..." , style="width: 220px">
             <sp-menu id="modelPicker" slot="options">
               <sp-menu-item value="doubao-seedream-4-5-251128">SeeDream 4.5</sp-menu-item>
+              <sp-menu-item value="doubao-seedream-5-0-260128">SeeDream 5.0</sp-menu-item>
               <sp-menu-item value="gemini-3-pro-image-preview" selected>Nano Banana Pro 🍌</sp-menu-item>
             <sp-menu-item value="grok-imagine-image">Grok Imagine</sp-menu-item>
             <!-- <sp-menu-item disabled value="flux2.max">FLUX.2[MAX]</sp-menu-item>
@@ -54,7 +55,7 @@
         <!-- Aspect Ratio -->
         <sp-picker id="ratioPicker" placehodler="Choose a ratio" , style="width: 110px; display: none;">
           <sp-menu id="aspectRatioPicker" slot="options">
-            <!-- As nano banana 3 pro and seedream 4.5 support arbitrary ratio input  -->
+            <!-- As nano banana 3 pro and seedream 4.5/5.0 support arbitrary ratio input  -->
             <!-- it is unnecessary to add the ratio parameter to the http request body -->
             <sp-menu-item value="default" selected>Auto</sp-menu-item>
             <sp-menu-item value="1:1">1:1</sp-menu-item>
@@ -289,7 +290,7 @@
       <sp-heading size="xs">Copyright</sp-heading>
       <sp-label>
         AI-assisted image editing for Photoshop<br>
-        Version 0.1.7-alpha<br>
+        Version 0.1.8-alpha<br>
 
         © 2026 dw<br>
         License: GPL-3.0<br>

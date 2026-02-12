@@ -12,6 +12,7 @@ const storage = require("./storage");
 const { getUI } = require("./ui");
 const {
   SEEDREAM,
+  SEEDREAM_5,
   NANOBANANA_PRO,
   GROK_IMAGINE,
   DEFAULT_API_KEYS,
@@ -53,7 +54,7 @@ const generator = createGenerator({
   generateWithProvider,
   logLine: logger.logLine,
   utils,
-  seedreamModelId: SEEDREAM,
+  seedreamModelId: [SEEDREAM, SEEDREAM_5],
   grokModelId: GROK_IMAGINE
 });
 
@@ -69,7 +70,7 @@ entrypoints.setup({
 initializeUI({
   ui,
   state,
-  models: { SEEDREAM, NANOBANANA_PRO, GROK_IMAGINE },
+  models: { SEEDREAM, SEEDREAM_5, NANOBANANA_PRO, GROK_IMAGINE },
   logger,
   storage
 });
@@ -77,7 +78,7 @@ initializeUI({
 bindEvents({
   ui,
   state,
-  models: { SEEDREAM, NANOBANANA_PRO, GROK_IMAGINE },
+  models: { SEEDREAM, SEEDREAM_5, NANOBANANA_PRO, GROK_IMAGINE },
   logger,
   storage,
   generator,

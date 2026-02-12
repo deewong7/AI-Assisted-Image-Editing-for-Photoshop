@@ -1,4 +1,4 @@
-const supportedModels = ["doubao-seedream-4-5-251128"];
+const supportedModels = ["doubao-seedream-4-5-251128", "doubao-seedream-5-0-260128"];
 
 async function generateImage(options) {
   const {

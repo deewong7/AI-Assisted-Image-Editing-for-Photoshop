@@ -39,7 +39,13 @@ function pickTier(longEdge, options = {}) {
   } = options;
 
   if (longEdge <= base["1K"] * upgradeFactor) {
-    if (selectedModel && seedreamModelId && selectedModel === seedreamModelId) {
+    if (
+      selectedModel &&
+      seedreamModelId &&
+      (Array.isArray(seedreamModelId)
+        ? seedreamModelId.includes(selectedModel)
+        : selectedModel === seedreamModelId)
+    ) {
       return "2K";
     }
     return "1K";

@@ -65,6 +65,9 @@ function getUI() {
 function renderModelUI(ui, state, models, logLine) {
   if (typeof state.selectedModel === "undefined") return;
 
+  const isSeedreamModel =
+    state.selectedModel === models.SEEDREAM || state.selectedModel === models.SEEDREAM_5;
+
   if (ui.resolutionOption1K) {
     ui.resolutionOption1K.style.display = "";
   }
@@ -75,7 +78,7 @@ function renderModelUI(ui, state, models, logLine) {
     ui.resolutionOption4K.style.display = "";
   }
 
-  if (state.selectedModel === models.SEEDREAM) {
+  if (isSeedreamModel) {
     if (ui.resolutionOption1K) {
       ui.resolutionOption1K.style.display = "none";
     }
