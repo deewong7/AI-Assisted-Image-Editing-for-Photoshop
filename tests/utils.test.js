@@ -42,6 +42,15 @@ test.describe("pickTier", () => {
     });
     assert.equal(tier, "1K");
   });
+
+  test("picks 2K for seedream list under 1K threshold", () => {
+    const tier = utils.pickTier(800, {
+      upgradeFactor: 1.5,
+      selectedModel: "seedream-5",
+      seedreamModelId: ["seedream-4", "seedream-5"]
+    });
+    assert.equal(tier, "2K");
+  });
 });
 
 test.describe("getCurrentTime", () => {

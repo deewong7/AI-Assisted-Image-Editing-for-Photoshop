@@ -6,7 +6,7 @@ Bring state-of-the-art image generation and edits directly into Photoshop. This 
 ## What this plugin does
 - In-Photoshop generation on a selected region
 - Supports multiple providers and models
-- **4K** output from `Nano Banana Pro` and `SeeDream 4.5`
+- **4K** output from `Nano Banana Pro` and `SeeDream 4.5/5.0`
 - Optional reference-image guidance
 - Adaptive resolution selection for better quality vs. speed
 - Places results into the current document as new layers
@@ -21,7 +21,7 @@ Bring state-of-the-art image generation and edits directly into Photoshop. This 
 
 ## Supported models
 - Google: Nano Banana Pro 3
-- ByteDance: SeeDream 4.5
+- ByteDance: SeeDream 4.5, SeeDream 5.0
 - xAI: Grok Imagine
 
 ## Quick start

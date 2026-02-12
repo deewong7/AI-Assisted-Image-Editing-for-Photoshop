@@ -1,4 +1,5 @@
 const SEEDREAM = "doubao-seedream-4-5-251128";
+const SEEDREAM_5 = "doubao-seedream-5-0-260128";
 const NANOBANANA_PRO = "gemini-3-pro-image-preview";
 const GROK_IMAGINE = "grok-imagine-image";
 
@@ -53,6 +54,7 @@ function createState({ ui, apiKey, promptPresets } = {}) {
 
 module.exports = {
   SEEDREAM,
+  SEEDREAM_5,
   NANOBANANA_PRO,
   GROK_IMAGINE,
   DEFAULT_API_KEYS,
