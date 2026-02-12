@@ -29,11 +29,11 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
       state.upgradeFactor = Number.isFinite(upgradeFactorValue) ? upgradeFactorValue : 1.5;
       state.resolution = utils.pickTier(Math.max(bounds.width, bounds.height), {
         upgradeFactor: state.upgradeFactor,
-        selectedModel: state.selectedModel,
+        selectedModel: targetModel,
         seedreamModelId
       });
     }
-    if (grokModelId && state.selectedModel === grokModelId) {
+    if (grokModelId && targetModel === grokModelId) {
       state.resolution = "1K";
     }
 
@@ -45,7 +45,7 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
 
     console.log("Prompt: " + prompt);
     if (typeof logLine === "function") {
-      logLine("-----" + state.selectedModel + "-----");
+      logLine("-----" + targetModel + "-----");
     }
 
     if (ui.errorArea) {
@@ -57,7 +57,7 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
       ui.generateButton.disabled = true;
     }
 
-    const shouldFetchBase64 = !state.textToImage || state.selectedModel === "localtest";
+    const shouldFetchBase64 = !state.textToImage || targetModel === "localtest";
     let base64Data;
     if (shouldFetchBase64) {
       try {
@@ -94,7 +94,7 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
     let jobCountIncremented = false;
     try {
       if (typeof logLine === "function") {
-        logLine("Fetching " + state.resolution + " image to " + state.selectedModel);
+        logLine("Fetching " + state.resolution + " image to " + targetModel);
       }
 
       state.currentJobCount = Math.max(0, (state.currentJobCount || 0) + 1);
@@ -102,7 +102,7 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
       jobCountIncremented = true;
 
       jobStartMs = Date.now();
-      if (state.selectedModel === "localtest") {
+      if (targetModel === "localtest") {
         const sleep = ms => new Promise(r => setTimeout(r, ms));
         await sleep(3000);
         generatedBase64 = base64Data;
@@ -111,9 +111,9 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
         const topPInput = parseFloat(ui.topP?.value);
         state.temperature = Number.isFinite(temperatureInput) ? temperatureInput : 1.0;
         state.topP = Number.isFinite(topPInput) ? topPInput : 0.90;
-        const nsfw = ui.allowNSFW.checked;
+        const nsfw = ui.allowNSFW?.checked;
 
-        generatedBase64 = await generateWithProvider(state.selectedModel, {
+        generatedBase64 = await generateWithProvider(targetModel, {
           prompt,
           base64Image: base64Data,
           resolution: state.resolution,
@@ -158,7 +158,7 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
     } finally {
       if (elapsedSeconds !== null) {
         const status = generatedBase64 ? "finished" : "failed";
-        const message = `Job ${status} after ${elapsedSeconds} seconds - ${state.selectedModel}`;
+        const message = `Job ${status} after ${elapsedSeconds} seconds - ${targetModel}`;
         console.log(message);
         if (typeof logLine === "function") {
           logLine(message);
