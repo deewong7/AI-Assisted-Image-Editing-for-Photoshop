@@ -9,6 +9,10 @@ const DEFAULT_API_KEYS = Object.freeze({
   "xAI-api-key": ""
 });
 
+const DEFAULT_PLUGIN_PREFS = Object.freeze({
+  persistGeneratedImages: false
+});
+
 const DEFAULT_PROMPT_PRESETS = {
   default: `现在你是一个Cosplay图片后期师，你需要按照以下规则进行处理：
 \t1.身材调整：对模特的胸部、腰部、臀部等部位进行适度膨胀，让模特的身材更加丰满且自然。
@@ -111,10 +115,11 @@ Top3Strengths=用1,2,3逗号分隔
 Top3Issues=用1,2,3逗号分隔
 NextShotPlan=下一次拍摄三步方案，用1,2,3逗号分隔`;
 
-function createState({ ui, apiKey, promptPresets } = {}) {
+function createState({ ui, apiKey, promptPresets, pluginPrefs } = {}) {
   const modelValue = ui?.modelPicker?.value ?? NANOBANANA_PRO;
   const resolutionValue = ui?.resolutionPicker?.value ?? "2K";
   const aspectRatioValue = ui?.aspectRatioPicker?.value ?? "default";
+  const prefs = pluginPrefs || DEFAULT_PLUGIN_PREFS;
 
   return {
     selectedModel: modelValue,
@@ -127,6 +132,7 @@ function createState({ ui, apiKey, promptPresets } = {}) {
     topP: 0.95,
     imageArray: [],
     skipMask: false,
+    persistGeneratedImages: prefs.persistGeneratedImages === true,
     textToImage: false,
     currentJobCount: 0,
     apiKey: apiKey || { ...DEFAULT_API_KEYS },
@@ -140,6 +146,7 @@ module.exports = {
   NANOBANANA_PRO,
   GROK_IMAGINE,
   DEFAULT_API_KEYS,
+  DEFAULT_PLUGIN_PREFS,
   DEFAULT_PROMPT_PRESETS,
   DEFAULT_CHAT_PROMPT,
   createState

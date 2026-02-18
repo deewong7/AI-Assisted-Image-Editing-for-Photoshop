@@ -1,7 +1,7 @@
 {
   "id": "io.github.deewong7.ai-assisted-image-editing-for-ps-vanilla",
   "name": "AI-assisted Image Editing for Photoshop Vanilla",
-  "version": "0.1.10-alpha",
+  "version": "0.2.0-alpha",
   "main": "index.html",
   "host": {
     "app": "PS",
@@ -21,6 +21,9 @@
     "launchProcess": {
       "schemes": [
         "https"
+      ],
+      "extensions": [
+        ""
       ]
     },
     "clipboard": "read"

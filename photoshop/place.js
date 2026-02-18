@@ -15,20 +15,24 @@ function createPlacer({ app, core, constants, fs, imaging, base64ToArrayBuffer, 
       return;
     }
 
-    const tmpFolder = await fs.getTemporaryFolder();
-    const fileNameNoExt = `tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const persistGeneratedImages = options.persistGeneratedImages === true;
+    const targetFolder = persistGeneratedImages
+      ? await fs.getDataFolder()
+      : await fs.getTemporaryFolder();
+    const targetModeLabel = persistGeneratedImages ? "persistent data folder" : "temporary folder";
+    const fileNameNoExt = `generated_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const fileName = `${fileNameNoExt}.png`;
-    const tmpFile = await tmpFolder.createFile(fileName, { overwrite: true });
-    await tmpFile.write(base64ToBuffer(base64));
-    console.log("Written base64 to tmp file..., length" + base64.length);
-    console.log("API generated image is written at:\n" + tmpFile.nativePath);
+    const targetFile = await targetFolder.createFile(fileName, { overwrite: true });
+    await targetFile.write(base64ToBuffer(base64));
+    console.log("Written base64 to output file..., length" + base64.length);
+    console.log("API generated image is written at (" + targetModeLabel + "):\n" + targetFile.nativePath);
     if (typeof logLine === "function") {
-      logLine("API generated image is written at:\n" + tmpFile.nativePath);
+      logLine("API generated image is written at (" + targetModeLabel + "):\n" + targetFile.nativePath);
     }
 
     try {
       await core.executeAsModal(async () => {
-        const sessionToken = fs.createSessionToken(tmpFile);
+        const sessionToken = fs.createSessionToken(targetFile);
         console.log("session token created: " + sessionToken);
 
         const selectCommand = {

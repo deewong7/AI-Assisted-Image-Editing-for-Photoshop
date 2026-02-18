@@ -25,6 +25,7 @@ test.describe("createGenerator", () => {
       textToImage: false,
       imageArray: ["ref-a"],
       skipMask: false,
+      persistGeneratedImages: true,
       showModelParameters: false,
       apiKey: { key: "a" },
       resolution: "2K",
@@ -95,6 +96,7 @@ test.describe("createGenerator", () => {
 
     assert.equal(providerCall.modelId, "model-a");
     assert.equal(placeCalls[0][2], "model-a");
+    assert.equal(placeCalls[0][3].persistGeneratedImages, true);
     assert.equal(logs.some(line => line.includes("Job finished") && line.includes("model-a")), true);
   });
 

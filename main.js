@@ -1,4 +1,5 @@
 const { entrypoints } = require("uxp");
+const shell = require("uxp").shell;
 const { app, core, constants } = require("photoshop");
 const imaging = require("photoshop").imaging;
 const fs = require("uxp").storage.localFileSystem;
@@ -16,6 +17,7 @@ const {
   NANOBANANA_PRO,
   GROK_IMAGINE,
   DEFAULT_API_KEYS,
+  DEFAULT_PLUGIN_PREFS,
   DEFAULT_PROMPT_PRESETS,
   DEFAULT_CHAT_PROMPT,
   createState
@@ -30,8 +32,9 @@ if (ui.modelPicker) {
 
 const apiKey = storage.loadApiKeys(localStorage, DEFAULT_API_KEYS);
 const promptPresets = storage.loadPromptPresets(localStorage, DEFAULT_PROMPT_PRESETS);
+const pluginPrefs = storage.loadPluginPrefs(localStorage, DEFAULT_PLUGIN_PREFS);
 
-const state = createState({ ui, apiKey, promptPresets });
+const state = createState({ ui, apiKey, promptPresets, pluginPrefs });
 
 const logger = createLogger(ui);
 const selection = createSelection({ core, imaging, logLine: logger.logLine });
@@ -61,6 +64,15 @@ const generator = createGenerator({
   nanoBananaModelId: NANOBANANA_PRO
 });
 
+async function openImageFolder() {
+  const folder = await fs.getDataFolder();
+  const result = await shell.openPath(folder.nativePath, "Open generated image folder");
+  if (typeof result === "string" && result.length > 0) {
+    throw new Error(result);
+  }
+  return folder.nativePath;
+}
+
 entrypoints.setup({
   commands: {},
   panels: {
@@ -86,6 +98,7 @@ bindEvents({
   logger,
   storage,
   generator,
+  openImageFolder,
   selection,
   app,
   core,

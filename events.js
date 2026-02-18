@@ -60,6 +60,9 @@ function initializeUI({ ui, state, models, logger, storage, defaultChatPromptTex
   if (ui.enableCritiquePromptEdit) {
     ui.enableCritiquePromptEdit.checked = false;
   }
+  if (ui.persistGeneratedImages) {
+    ui.persistGeneratedImages.checked = state.persistGeneratedImages === true;
+  }
   applyCritiquePromptEditState(ui, defaultChatPromptText);
 }
 
@@ -70,6 +73,7 @@ function bindEvents({
   logger,
   storage,
   generator,
+  openImageFolder,
   selection,
   app,
   core,
@@ -134,6 +138,25 @@ function bindEvents({
 
   if (ui.generateButton) {
     ui.generateButton.addEventListener("click", generator.generate);
+  }
+
+  if (ui.openImageFolderButton && typeof openImageFolder === "function") {
+    ui.openImageFolderButton.addEventListener("click", async () => {
+      ui.openImageFolderButton.disabled = true;
+      try {
+        const path = await openImageFolder();
+        if (typeof logLine === "function") {
+          logLine("Opened image folder:\n" + path);
+        }
+      } catch (error) {
+        if (typeof logLine === "function") {
+          logLine("Failed to open image folder: " + (error?.message || String(error)));
+        }
+        core.showAlert("Failed to open image folder. Check log for details.");
+      } finally {
+        ui.openImageFolderButton.disabled = false;
+      }
+    });
   }
 
   if (ui.critiqueButton) {
@@ -315,6 +338,15 @@ function bindEvents({
       renderPreviewVisibility(e.target.checked);
     });
     renderPreviewVisibility(ui.previewImageCheckbox.checked);
+  }
+
+  if (ui.persistGeneratedImages) {
+    ui.persistGeneratedImages.addEventListener("click", (e) => {
+      state.persistGeneratedImages = e.target.checked;
+      storage.savePluginPrefs(localStorage, {
+        persistGeneratedImages: state.persistGeneratedImages
+      });
+    });
   }
 
   if (ui.enableCritiquePromptEdit) {

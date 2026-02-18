@@ -100,6 +100,24 @@ function savePromptPresetsToStorage(storage, presets) {
   storage.setItem("promptPresets", JSON.stringify(presets));
 }
 
+function loadPluginPrefsFromStorage(storage, defaultPrefs) {
+  const raw = storage.getItem("pluginPrefs");
+  if (!raw) {
+    return { ...defaultPrefs };
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    return { ...defaultPrefs, ...parsed };
+  } catch {
+    return { ...defaultPrefs };
+  }
+}
+
+function savePluginPrefsToStorage(storage, prefs) {
+  storage.setItem("pluginPrefs", JSON.stringify(prefs));
+}
+
 module.exports = {
   BASE_RESOLUTION,
   base64ToArrayBuffer,
@@ -108,5 +126,7 @@ module.exports = {
   loadKeysFromStorage,
   saveKeysToStorage,
   loadPromptPresetsFromStorage,
-  savePromptPresetsToStorage
+  savePromptPresetsToStorage,
+  loadPluginPrefsFromStorage,
+  savePluginPrefsToStorage
 };

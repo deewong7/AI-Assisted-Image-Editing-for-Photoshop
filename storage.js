@@ -16,9 +16,19 @@ function savePromptPresets(storage, presets) {
   utils.savePromptPresetsToStorage(storage, presets);
 }
 
+function loadPluginPrefs(storage, defaults) {
+  return utils.loadPluginPrefsFromStorage(storage, defaults);
+}
+
+function savePluginPrefs(storage, prefs) {
+  utils.savePluginPrefsToStorage(storage, prefs);
+}
+
 module.exports = {
   loadApiKeys,
   saveApiKeys,
   loadPromptPresets,
-  savePromptPresets
+  savePromptPresets,
+  loadPluginPrefs,
+  savePluginPrefs
 };
