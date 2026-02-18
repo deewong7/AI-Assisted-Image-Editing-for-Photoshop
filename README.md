@@ -1,4 +1,6 @@
 # AI-Assisted Image Editing for Photoshop
+[English](./README.md) | [简体中文](./README.zh-CN.md)
+
 [![Test](https://github.com/deewong7/AI-Assisted-Image-Editing-for-Photoshop/actions/workflows/tests.yml/badge.svg?branch=dev)](https://github.com/deewong7/AI-Assisted-Image-Editing-for-Photoshop/actions/workflows/tests.yml)
 
 Bring state-of-the-art image generation and edits directly into Photoshop. This UXP plugin lets you select an area, describe the change, and generate results from leading cloud models without leaving your document.
