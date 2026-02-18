@@ -99,3 +99,37 @@ test.describe("loadPromptPresetsFromStorage", () => {
     assert.equal(storage._store.promptPresets, JSON.stringify(defaults));
   });
 });
+
+test.describe("loadPluginPrefsFromStorage", () => {
+  test("returns defaults when missing", () => {
+    const storage = createStorage();
+    const defaults = { persistGeneratedImages: false };
+    assert.deepEqual(utils.loadPluginPrefsFromStorage(storage, defaults), defaults);
+  });
+
+  test("merges stored plugin preferences", () => {
+    const storage = createStorage({
+      pluginPrefs: JSON.stringify({ persistGeneratedImages: true })
+    });
+    const defaults = { persistGeneratedImages: false };
+    assert.deepEqual(utils.loadPluginPrefsFromStorage(storage, defaults), {
+      persistGeneratedImages: true
+    });
+  });
+
+  test("falls back to defaults on invalid JSON", () => {
+    const storage = createStorage({
+      pluginPrefs: "{invalid"
+    });
+    const defaults = { persistGeneratedImages: false };
+    assert.deepEqual(utils.loadPluginPrefsFromStorage(storage, defaults), defaults);
+  });
+});
+
+test.describe("savePluginPrefsToStorage", () => {
+  test("stores plugin preferences under pluginPrefs key", () => {
+    const storage = createStorage();
+    utils.savePluginPrefsToStorage(storage, { persistGeneratedImages: true });
+    assert.equal(storage._store.pluginPrefs, JSON.stringify({ persistGeneratedImages: true }));
+  });
+});

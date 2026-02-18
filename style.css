@@ -21,6 +21,7 @@ li:before {
 
 sp-button,
 #generate,
+#openImageFolder,
 #critique,
 #clear,
 #clearLog,
@@ -98,6 +99,7 @@ textarea {
 }
 
 #generate,
+#openImageFolder,
 #clear,
 #clearLog,
 #critique {

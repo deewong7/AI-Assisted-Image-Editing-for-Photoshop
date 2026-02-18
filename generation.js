@@ -203,7 +203,8 @@ function createGenerator({
         logLine("Placing server generated image to document, length: " + generatedBase64.length);
       }
       await placer.placeToCurrentDocAtSelection(generatedBase64, bounds, targetModel, {
-        skipMask: state.skipMask
+        skipMask: state.skipMask,
+        persistGeneratedImages: state.persistGeneratedImages
       });
     } catch (error) {
       console.error("Error placing generated image to document: " + error);
