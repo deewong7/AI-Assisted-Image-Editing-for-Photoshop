@@ -4,7 +4,7 @@ const imaging = require("photoshop").imaging;
 const fs = require("uxp").storage.localFileSystem;
 
 const utils = require("./utils");
-const { generateWithProvider } = require("./providers/index.js");
+const { generateWithProvider, critiqueWithProvider } = require("./providers/index.js");
 const { createSelection } = require("./photoshop/selection");
 const { createPlacer } = require("./photoshop/place");
 const { createLogger } = require("./log");
@@ -17,6 +17,7 @@ const {
   GROK_IMAGINE,
   DEFAULT_API_KEYS,
   DEFAULT_PROMPT_PRESETS,
+  DEFAULT_CHAT_PROMPT,
   createState
 } = require("./state");
 const { createGenerator } = require("./generation");
@@ -52,10 +53,12 @@ const generator = createGenerator({
   selection,
   placer,
   generateWithProvider,
+  critiqueWithProvider,
   logLine: logger.logLine,
   utils,
   seedreamModelId: [SEEDREAM, SEEDREAM_5],
-  grokModelId: GROK_IMAGINE
+  grokModelId: GROK_IMAGINE,
+  nanoBananaModelId: NANOBANANA_PRO
 });
 
 entrypoints.setup({
@@ -72,7 +75,8 @@ initializeUI({
   state,
   models: { SEEDREAM, SEEDREAM_5, NANOBANANA_PRO, GROK_IMAGINE },
   logger,
-  storage
+  storage,
+  defaultChatPromptText: DEFAULT_CHAT_PROMPT
 });
 
 bindEvents({
@@ -85,5 +89,6 @@ bindEvents({
   selection,
   app,
   core,
-  defaultPromptText: DEFAULT_PROMPT_PRESETS.default
+  defaultPromptText: DEFAULT_PROMPT_PRESETS.default,
+  defaultChatPromptText: DEFAULT_CHAT_PROMPT
 });

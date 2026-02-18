@@ -16,7 +16,7 @@
 
   <sp-action-group id="nav" selects="single">
     <sp-action-button quiet data-page="main" style="text-decoration: underline;">Image</sp-action-button>
-    <!-- <sp-action-button quiet data-page="chat">Chat</sp-action-button> -->
+    <sp-action-button quiet data-page="chat">Chat</sp-action-button>
     <sp-action-button quiet data-page="settings">Preference</sp-action-button>
     <sp-action-button quiet data-page="about">About</sp-action-button>
   </sp-action-group>
@@ -194,6 +194,33 @@
 
     </sp-div>
 
+    <!-- PAGE: CHAT -->
+    <sp-div id="chat" data-page hidden>
+      <sp-heading size="xs">Chat Critique</sp-heading>
+      <sp-divider size="small"></sp-divider>
+
+      <sp-div id="chatImagePreview" style="display: none;">
+        <sp-label slot="label">Image Preview
+          <sp-p id="chatImageToProcess" class="thumb"
+            style="width: 220px; height: 220px; max-width: 300px; max-height: 300px; overflow: auto;"></sp-p>
+        </sp-label>
+      </sp-div>
+
+      <sp-textarea id="chatPromptInput" placeholder="Enter your prompt here"
+        style="resize: vertical; overflow: auto; width: 220px" height="220px">
+        <sp-label slot="label">Prompt</sp-label>
+      </sp-textarea>
+
+      <sp-br></sp-br>
+      <sp-button class="shortBtn" id="critique">Critique</sp-button>
+      <sp-br></sp-br>
+
+      <sp-textarea id="chatOutput" placeholder="Streaming critique output will appear here"
+        style="resize: vertical; overflow: auto; width: 220px" height="220px">
+        <sp-label slot="label">Critique Output</sp-label>
+      </sp-textarea>
+    </sp-div>
+
     <!-- PAGE: SETTINGS -->
     <sp-div id="settings" data-page hidden>
       <!-- <sp-heading size="S">Developer</sp-heading> -->
@@ -227,6 +254,9 @@
         <br>
 
         <sp-checkbox id="previewImage">Preview Image</sp-checkbox>
+        <br>
+
+        <sp-checkbox id="enableCritiquePromptEdit">Enable Critique Prompt Edit</sp-checkbox>
         <br>
 
         <sp-checkbox disabled>Group Generated Images</sp-checkbox>
@@ -290,7 +320,7 @@
       <sp-heading size="xs">Copyright</sp-heading>
       <sp-label>
         AI-assisted image editing for Photoshop<br>
-        Version 0.1.9-alpha<br>
+        Version 0.1.10-alpha<br>
 
         © 2026 dw<br>
         License: GPL-3.0<br>

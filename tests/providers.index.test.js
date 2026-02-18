@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const bytedance = require("../providers/bytedance.js");
 const google = require("../providers/google.js");
 const xai = require("../providers/xai.js");
-const { providerMap, generateWithProvider } = require("../providers/index.js");
+const { providerMap, generateWithProvider, critiqueWithProvider } = require("../providers/index.js");
 
 test.describe("providerMap (index)", () => {
   test("includes supported models", () => {
@@ -42,5 +42,40 @@ test.describe("generateWithProvider (index)", () => {
       () => generateWithProvider("missing-model", {}),
       /Unsupported model: missing-model/
     );
+  });
+});
+
+test.describe("critiqueWithProvider (index)", () => {
+  test("calls provider critique stream with modelId", async () => {
+    const modelId = "test-critique-model";
+    let captured;
+    providerMap[modelId] = {
+      critiqueImageStream: async function* (options) {
+        captured = options;
+        yield "ok";
+      }
+    };
+
+    const chunks = [];
+    for await (const chunk of critiqueWithProvider(modelId, { prompt: "hello" })) {
+      chunks.push(chunk);
+    }
+
+    assert.deepEqual(chunks, ["ok"]);
+    assert.equal(captured.modelId, modelId);
+    delete providerMap[modelId];
+  });
+
+  test("throws for unsupported critique model", async () => {
+    providerMap["no-critique"] = {
+      generateImage: async () => "ok"
+    };
+
+    assert.throws(
+      () => critiqueWithProvider("no-critique", {}),
+      /Critique mode is not supported for model: no-critique/
+    );
+
+    delete providerMap["no-critique"];
   });
 });

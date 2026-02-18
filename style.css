@@ -21,6 +21,7 @@ li:before {
 
 sp-button,
 #generate,
+#critique,
 #clear,
 #clearLog,
 #imageToProcess,
@@ -96,7 +97,10 @@ textarea {
   gap: 8px;
 }
 
-#generate {
+#generate,
+#clear,
+#clearLog,
+#critique {
   width: 219px;
   height: 26px;
   min-height: 8px;
@@ -105,3 +109,6 @@ textarea {
   font-size: 13px;
 }
 
+#chatOutput {
+  width: 220px;
+}
