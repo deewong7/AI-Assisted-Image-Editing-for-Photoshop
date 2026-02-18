@@ -3,13 +3,13 @@
 
 [![Test](https://github.com/deewong7/AI-Assisted-Image-Editing-for-Photoshop/actions/workflows/tests.yml/badge.svg?branch=dev)](https://github.com/deewong7/AI-Assisted-Image-Editing-for-Photoshop/actions/workflows/tests.yml)
 
-把前沿的 image generation 和 image editing 直接带进 Photoshop。这个 UXP plugin 让你在不离开当前文档的情况下，选中区域、输入 prompt，并通过主流 cloud models 生成结果。
+把前沿的 image generation 和 image editing 直接带进 Photoshop。这个 UXP plugin 让你在不离开当前文档的情况下，选中区域、输入 prompt，并通过主流图像模型生成1K,2K,4K图片。
 
 ## 这个插件能做什么
 - 在 Photoshop 内对选区进行生成与编辑
 - 支持多个 provider 和 model
 - `Nano Banana Pro` 与 `SeeDream 4.5/5.0` 支持 **4K** 输出
-- 支持可选的 reference-image 引导
+- 支持参考图功能
 - 支持自适应分辨率，在 quality 与 speed 间做平衡
 - 将结果以新图层形式放入当前文档
 
@@ -30,12 +30,13 @@
 1) 将插件源码解压到 Photoshop 的 `Plug-ins` 目录（**需要重启**）。
 2) 打开面板并选择模型。
 3) 在当前文档中创建选区。
-4) 输入 prompt 并点击 Generate。
+4) 输入 提示词 并点击 Generate按钮。
 5) 完成。
 
 ## API keys
 你可以只配置一个，也可以同时配置多个：
 - Google API key: [Google Vertex AI](https://cloud.google.com/vertex-ai?hl=en)
+- Google AI Studio [Google AI Studio](https://aistudio.google.com)
 - ByteDance API key: [Volcengine](https://console.volcengine.com/ark/region:ark+cn-beijing/openManagement?LLM=%7B%7D&advancedActiveKey=model&tab=ComputerVision)
 - xAI API Key: [xAI](https://console.x.ai/)
 
