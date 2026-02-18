@@ -40,10 +40,27 @@ function updateApiKey(ui, state, storage, update = true) {
   }
 }
 
-function initializeUI({ ui, state, models, logger, storage }) {
+function applyCritiquePromptEditState(ui, defaultChatPromptText = "") {
+  if (!ui.chatPromptInput) return;
+
+  const editable = ui.enableCritiquePromptEdit?.checked === true;
+  ui.chatPromptInput.disabled = !editable;
+  if (!editable) {
+    ui.chatPromptInput.value = defaultChatPromptText || "";
+  }
+}
+
+function initializeUI({ ui, state, models, logger, storage, defaultChatPromptText = "" }) {
   updateApiKey(ui, state, storage, false);
   populatePromptPresets(ui, state.promptPresets);
   renderModelUI(ui, state, models, logger.logLine);
+  if (ui.chatPromptInput && !ui.chatPromptInput.value?.trim()) {
+    ui.chatPromptInput.value = defaultChatPromptText;
+  }
+  if (ui.enableCritiquePromptEdit) {
+    ui.enableCritiquePromptEdit.checked = false;
+  }
+  applyCritiquePromptEditState(ui, defaultChatPromptText);
 }
 
 function bindEvents({
@@ -56,7 +73,8 @@ function bindEvents({
   selection,
   app,
   core,
-  defaultPromptText
+  defaultPromptText,
+  defaultChatPromptText = ""
 }) {
   const logLine = logger.logLine;
 
@@ -116,6 +134,10 @@ function bindEvents({
 
   if (ui.generateButton) {
     ui.generateButton.addEventListener("click", generator.generate);
+  }
+
+  if (ui.critiqueButton) {
+    ui.critiqueButton.addEventListener("click", generator.critique);
   }
 
   if (ui.clearImageButton) {
@@ -281,10 +303,23 @@ function bindEvents({
   }
 
   if (ui.previewImageCheckbox) {
-    ui.previewImageCheckbox.addEventListener("click", (e) => {
+    const renderPreviewVisibility = (enabled) => {
       if (ui.imagePreview) {
-        ui.imagePreview.style.display = e.target.checked ? "" : "none";
+        ui.imagePreview.style.display = enabled ? "" : "none";
       }
+      if (ui.chatImagePreview) {
+        ui.chatImagePreview.style.display = enabled ? "" : "none";
+      }
+    };
+    ui.previewImageCheckbox.addEventListener("click", (e) => {
+      renderPreviewVisibility(e.target.checked);
+    });
+    renderPreviewVisibility(ui.previewImageCheckbox.checked);
+  }
+
+  if (ui.enableCritiquePromptEdit) {
+    ui.enableCritiquePromptEdit.addEventListener("click", () => {
+      applyCritiquePromptEditState(ui, defaultChatPromptText);
     });
   }
 

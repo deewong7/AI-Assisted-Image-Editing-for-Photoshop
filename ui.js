@@ -26,6 +26,11 @@ function getUI() {
     imageToProcess: document.getElementById("imageToProcess"),
     imagePreview: document.getElementById("imagePreview"),
     clearImageButton: document.getElementById("clear"),
+    chatPromptInput: document.getElementById("chatPromptInput"),
+    critiqueButton: document.getElementById("critique"),
+    chatOutput: document.getElementById("chatOutput"),
+    chatImagePreview: document.getElementById("chatImagePreview"),
+    chatImageToProcess: document.getElementById("chatImageToProcess"),
     logArea: document.getElementById("log"),
     logAreas: document.getElementsByClassName("logArea"),
     clearLogButton: document.getElementById("clearLog"),
@@ -43,6 +48,7 @@ function getUI() {
     googleModel: document.getElementById("googleModel"),
     allowNSFW: document.getElementById("allowNSFW"),
     previewImageCheckbox: document.getElementById("previewImage"),
+    enableCritiquePromptEdit: document.getElementById("enableCritiquePromptEdit"),
     adaptiveRatioSetting: document.getElementById("adaptiveRatioSetting"),
     adaptiveResolutionSetting: document.getElementById("adaptiveResolutionSetting"),
     upgradeFactorSlider: document.getElementById("upgradeFactorSlider"),
@@ -151,6 +157,16 @@ function clearImagePreview(ui) {
   ui.imageToProcess.innerHTML = "";
 }
 
+function setChatImagePreview(ui, base64) {
+  if (!ui.chatImageToProcess) return;
+  ui.chatImageToProcess.innerHTML = `<image src='data:image/png;base64,${base64}'></image>`;
+}
+
+function clearChatImagePreview(ui) {
+  if (!ui.chatImageToProcess) return;
+  ui.chatImageToProcess.innerHTML = "";
+}
+
 function appendReferencePreview(ui, base64, count) {
   if (!ui.refImagePreview) return;
 
@@ -198,6 +214,8 @@ module.exports = {
   populatePromptPresets,
   setImagePreview,
   clearImagePreview,
+  setChatImagePreview,
+  clearChatImagePreview,
   appendReferencePreview,
   clearReferencePreview,
   renderJobCount

@@ -1,5 +1,67 @@
-const { setImagePreview, renderJobCount } = require('./ui.js')
-function createGenerator({ app, core, ui, state, selection, placer, generateWithProvider, logLine, utils, seedreamModelId, grokModelId }) {
+const { setImagePreview, setChatImagePreview, renderJobCount } = require('./ui.js')
+function createGenerator({
+  app,
+  core,
+  ui,
+  state,
+  selection,
+  placer,
+  generateWithProvider,
+  critiqueWithProvider,
+  logLine,
+  utils,
+  seedreamModelId,
+  grokModelId,
+  nanoBananaModelId
+}) {
+  function toNumber(value) {
+    let parsed = Number(value);
+    if (!Number.isFinite(parsed) && value && typeof value === "object") {
+      if (Number.isFinite(Number(value._value))) {
+        parsed = Number(value._value);
+      } else if (Number.isFinite(Number(value.value))) {
+        parsed = Number(value.value);
+      }
+    }
+    return Number.isFinite(parsed) ? parsed : NaN;
+  }
+
+  function createBoundsFromSelection(selectionBounds) {
+    return {
+      left: toNumber(selectionBounds.left),
+      right: toNumber(selectionBounds.right),
+      top: toNumber(selectionBounds.top),
+      bottom: toNumber(selectionBounds.bottom),
+      width: toNumber(selectionBounds.width),
+      height: toNumber(selectionBounds.height)
+    };
+  }
+
+  function createBoundsFromDocument(doc) {
+    const width = toNumber(doc.width);
+    const height = toNumber(doc.height);
+    return {
+      left: 0,
+      right: width,
+      top: 0,
+      bottom: height,
+      width,
+      height
+    };
+  }
+
+  function isValidBounds(bounds) {
+    return bounds &&
+      Number.isFinite(bounds.left) &&
+      Number.isFinite(bounds.right) &&
+      Number.isFinite(bounds.top) &&
+      Number.isFinite(bounds.bottom) &&
+      Number.isFinite(bounds.width) &&
+      Number.isFinite(bounds.height) &&
+      bounds.width > 0 &&
+      bounds.height > 0;
+  }
+
   async function generate() {
     if (ui.testCheckbox && ui.testCheckbox.checked) {
       state.selectedModel = "localtest";
@@ -15,14 +77,7 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
     }
 
     const targetModel = state.selectedModel;
-    const bounds = {
-      left: selectionData.bounds.left,
-      right: selectionData.bounds.right,
-      top: selectionData.bounds.top,
-      bottom: selectionData.bounds.bottom,
-      width: selectionData.bounds.width,
-      height: selectionData.bounds.height
-    };
+    const bounds = createBoundsFromSelection(selectionData.bounds);
 
     if (state.adaptiveResolutionSetting) {
       const upgradeFactorValue = parseFloat(ui.upgradeFactorSlider?.value);
@@ -167,8 +222,99 @@ function createGenerator({ app, core, ui, state, selection, placer, generateWith
     }
   }
 
+  async function critique() {
+    const targetModel = state.selectedModel;
+    const expectedModel = nanoBananaModelId || "gemini-3-pro-image-preview";
+    if (targetModel !== expectedModel) {
+      const message = "Chat critique currently supports Nano Banana Pro only.";
+      core.showAlert(message);
+      if (typeof logLine === "function") {
+        logLine(message);
+      }
+      return;
+    }
+
+    const promptValue = ui.chatPromptInput ? ui.chatPromptInput.value : ui.promptInput?.value;
+    const prompt = (promptValue || "").trim();
+    if (prompt === "") {
+      core.showAlert("Please input prompt.");
+      return;
+    }
+
+    let bounds;
+    const selectionData = app.activeDocument.selection;
+    if (selectionData?.bounds) {
+      bounds = createBoundsFromSelection(selectionData.bounds);
+    } else {
+      bounds = createBoundsFromDocument(app.activeDocument);
+    }
+
+    if (!isValidBounds(bounds)) {
+      const message = "Failed to resolve valid bounds from current document.";
+      core.showAlert(message);
+      if (typeof logLine === "function") {
+        logLine(message);
+      }
+      return;
+    }
+
+    let base64Data = "";
+    try {
+      base64Data = await selection.getImageDataToBase64(bounds);
+    } catch (error) {
+      if (typeof logLine === "function") {
+        logLine("Failed to capture image for critique: " + error.message);
+      }
+    }
+
+    if (!base64Data) {
+      if (typeof logLine === "function") {
+        logLine("No base64 data obtained for critique. Aborting.");
+      }
+      return;
+    }
+
+    setChatImagePreview(ui, base64Data);
+
+    if (ui.chatOutput) {
+      ui.chatOutput.value = "";
+      ui.chatOutput.disabled = true;
+    }
+    if (ui.critiqueButton) {
+      ui.critiqueButton.disabled = true;
+    }
+
+    try {
+      for await (const textChunk of critiqueWithProvider(targetModel, {
+        prompt,
+        base64Image: base64Data,
+        apiKey: state.apiKey,
+        logLine
+      })) {
+        if (!textChunk || !ui.chatOutput) {
+          continue;
+        }
+        ui.chatOutput.value += textChunk;
+        ui.chatOutput.scrollTop = ui.chatOutput.scrollHeight;
+      }
+    } catch (error) {
+      if (typeof logLine === "function") {
+        logLine("Error during critique streaming: " + error.message);
+      }
+      core.showAlert("Critique failed. Check log for details.");
+    } finally {
+      if (ui.critiqueButton) {
+        ui.critiqueButton.disabled = false;
+      }
+      if (ui.chatOutput) {
+        ui.chatOutput.disabled = false;
+      }
+    }
+  }
+
   return {
-    generate
+    generate,
+    critique
   };
 }
 

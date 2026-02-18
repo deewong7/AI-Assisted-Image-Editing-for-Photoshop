@@ -19,7 +19,19 @@ async function generateWithProvider(modelId, options) {
   return provider.generateImage({ ...options, modelId });
 }
 
+function critiqueWithProvider(modelId, options) {
+  const provider = providerMap[modelId];
+  if (!provider) {
+    throw new Error("Unsupported model: " + modelId);
+  }
+  if (typeof provider.critiqueImageStream !== "function") {
+    throw new Error("Critique mode is not supported for model: " + modelId);
+  }
+  return provider.critiqueImageStream({ ...options, modelId });
+}
+
 module.exports = {
   generateWithProvider,
+  critiqueWithProvider,
   providerMap
 };
