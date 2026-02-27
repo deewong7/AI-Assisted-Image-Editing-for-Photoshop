@@ -95,17 +95,19 @@ function renderModelUI(ui, state, models, logLine) {
       state.resolution = "2K";
     }
   } else if (state.selectedModel === models.GROK_IMAGINE) {
-    if (ui.resolutionOption2K) {
-      ui.resolutionOption2K.style.display = "none";
-      ui.resolutionOption2K.selected = false;
-    }
+    const currentResolution = state.resolution || ui.resolutionPicker?.value;
     if (ui.resolutionOption4K) {
       ui.resolutionOption4K.style.display = "none";
       ui.resolutionOption4K.selected = false;
     }
-    if (ui.resolutionOption1K) {
-      ui.resolutionOption1K.selected = true;
-      state.resolution = "1K";
+    if (currentResolution === "4K") {
+      if (ui.resolutionOption2K) {
+        ui.resolutionOption2K.selected = true;
+        state.resolution = "2K";
+      } else if (ui.resolutionOption1K) {
+        ui.resolutionOption1K.selected = true;
+        state.resolution = "1K";
+      }
     }
   }
 

@@ -88,10 +88,6 @@ function createGenerator({
         seedreamModelId
       });
     }
-    if (grokModelId && targetModel === grokModelId) {
-      state.resolution = "1K";
-    }
-
     const prompt = ui.promptInput?.value.trim();
     if (prompt === "") {
       core.showAlert("Please input prompt.");

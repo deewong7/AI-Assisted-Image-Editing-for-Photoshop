@@ -5,7 +5,8 @@ const API_ENDPOINT = "https://api.x.ai/v1/images";
 function normalizeResolution(resolution) {
   if (!resolution) return "1k";
   const normalized = String(resolution).toLowerCase();
-  if (normalized === "1k") return "1k";
+  if (normalized === "1k" || normalized === "2k") return normalized;
+  if (normalized === "4k") return "2k";
   return "1k";
 }
 

@@ -16,12 +16,19 @@ function decodeBase64ToBinaryString(base64, atobImpl) {
   throw new Error("No base64 decoder available in this environment.");
 }
 
+function normalizeBase64Payload(base64) {
+  const trimmed = base64.trim();
+  const match = /^data:[^,]*;base64,(.+)$/i.exec(trimmed);
+  return match ? match[1] : trimmed;
+}
+
 function base64ToArrayBuffer(base64, atobImpl = typeof atob === "function" ? atob : undefined) {
   if (typeof base64 !== "string") {
     throw new TypeError("base64 must be a string");
   }
 
-  const binaryString = decodeBase64ToBinaryString(base64, atobImpl);
+  const normalizedBase64 = normalizeBase64Payload(base64);
+  const binaryString = decodeBase64ToBinaryString(normalizedBase64, atobImpl);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) {

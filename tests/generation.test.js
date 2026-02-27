@@ -13,6 +13,75 @@ function createDeferred() {
 }
 
 test.describe("createGenerator", () => {
+  test("does not force Grok resolution to 1K", async () => {
+    let providerCall;
+
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          selection: {
+            bounds: {
+              left: 0,
+              right: 100,
+              top: 0,
+              bottom: 100,
+              width: 100,
+              height: 100
+            }
+          }
+        }
+      },
+      core: {
+        showAlert: () => {}
+      },
+      ui: {
+        testCheckbox: { checked: false },
+        promptInput: { value: "test prompt" },
+        generateButton: { disabled: false, innerText: "Generate" },
+        allowNSFW: { checked: false },
+        temperature: { value: "1.0" },
+        topP: { value: "0.90" }
+      },
+      state: {
+        selectedModel: "grok-imagine-image",
+        aspectRatio: "16:9",
+        textToImage: true,
+        imageArray: [],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: false,
+        apiKey: { "xAI-api-key": "KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: false,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          throw new Error("should not fetch selection image for text-to-image");
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {}
+      },
+      generateWithProvider: async (modelId, options) => {
+        providerCall = { modelId, options };
+        return "generated-b64";
+      },
+      critiqueWithProvider: async function* () {},
+      logLine: () => {},
+      utils: {
+        pickTier: () => "4K"
+      },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image"
+    });
+
+    await generator.generate();
+
+    assert.equal(providerCall.modelId, "grok-imagine-image");
+    assert.equal(providerCall.options.resolution, "2K");
+  });
+
   test("keeps the originally selected model when state changes mid-request", async () => {
     const logs = [];
     const placeCalls = [];

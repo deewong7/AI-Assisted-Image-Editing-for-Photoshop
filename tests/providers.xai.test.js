@@ -52,7 +52,7 @@ test.describe("generateImage (xai)", () => {
     const result = await generateImage({
       prompt: "hello",
       apiKey: { "xAI-api-key": "KEY" },
-      resolution: "1K",
+      resolution: "2K",
       aspectRatio: "16:9",
       modelId: "custom-model",
       textToImage: true
@@ -66,7 +66,7 @@ test.describe("generateImage (xai)", () => {
     assert.equal(body.model, "custom-model");
     assert.equal(body.response_format, "b64_json");
     assert.equal(body.aspect_ratio, "16:9");
-    assert.equal(body.resolution, "1k");
+    assert.equal(body.resolution, "2k");
     assert.equal(body.image, undefined);
   });
 
@@ -98,7 +98,7 @@ test.describe("generateImage (xai)", () => {
 
     const body = JSON.parse(lastCall.options.body);
     assert.equal(body.response_format, "b64_json");
-    assert.equal(body.resolution, "1k");
+    assert.equal(body.resolution, "2k");
     assert.notStrictEqual(body.image, { url: 'data:image/png;base64,BASE' });
     assert.equal(body.aspect_ratio, undefined);
   });
