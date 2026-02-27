@@ -22,6 +22,22 @@ test.describe("base64ToArrayBuffer", () => {
     const bytes = Array.from(new Uint8Array(buffer));
     assert.deepEqual(bytes, [104, 101, 108, 108, 111]);
   });
+
+  test("decodes base64 payload with data URL prefix", () => {
+    const base64 = "data:image/png;base64,aGVsbG8="; // "hello"
+    const buffer = utils.base64ToArrayBuffer(base64);
+    const bytes = Array.from(new Uint8Array(buffer));
+    assert.deepEqual(bytes, [104, 101, 108, 108, 111]);
+  });
+
+  test("passes pure base64 through unchanged", () => {
+    let received;
+    utils.base64ToArrayBuffer("aGVsbG8=", (value) => {
+      received = value;
+      return "hello";
+    });
+    assert.equal(received, "aGVsbG8=");
+  });
 });
 
 test.describe("pickTier", () => {
