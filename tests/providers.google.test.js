@@ -3,6 +3,90 @@ const assert = require("node:assert/strict");
 const { generateImage, critiqueImageStream } = require("../providers/google.js");
 
 test.describe("generateImage (google)", () => {
+  test("supports Nano Banana 2 over Vertex endpoint", async (t) => {
+    const originalFetch = global.fetch;
+    let lastCall;
+    global.fetch = async (url, options) => {
+      lastCall = { url, options };
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [{ inlineData: { data: "NB2_VERTEX_RESULT" } }]
+              }
+            }
+          ]
+        })
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    const result = await generateImage({
+      prompt: "hello",
+      base64Image: "BASE",
+      apiKey: { "NanoBananaPro-api-key": "AQ_KEY" },
+      resolution: "2K",
+      aspectRatio: "3:4",
+      referenceImages: ["REF"],
+      modelId: "gemini-3.1-flash-image-preview"
+    });
+
+    assert.equal(result, "NB2_VERTEX_RESULT");
+    assert.ok(lastCall);
+    assert.match(lastCall.url, /^https:\/\/aiplatform\.googleapis\.com\/v1\/publishers\/google\/models\/gemini-3\.1-flash-image-preview:generateContent\?key=AQ_KEY$/);
+
+    const body = JSON.parse(lastCall.options.body);
+    assert.equal(body.generationConfig.imageConfig.imageSize, "2K");
+    assert.equal(body.generationConfig.imageConfig.aspectRatio, "3:4");
+    assert.equal(body.contents[0].parts[0].inlineData.data, "REF");
+    assert.equal(body.contents[0].parts[1].inlineData.data, "BASE");
+  });
+
+  test("supports Nano Banana 2 over AI Studio endpoint", async (t) => {
+    const originalFetch = global.fetch;
+    let lastCall;
+    global.fetch = async (url, options) => {
+      lastCall = { url, options };
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [{ text: "Generated" }, { inlineData: { data: "NB2_AI_STUDIO_RESULT" } }]
+              }
+            }
+          ]
+        })
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    const result = await generateImage({
+      prompt: "hello",
+      base64Image: "BASE",
+      apiKey: { "NanoBananaPro-api-key": "AIza_TEST_KEY" },
+      resolution: "2K",
+      modelId: "gemini-3.1-flash-image-preview"
+    });
+
+    assert.equal(result, "NB2_AI_STUDIO_RESULT");
+    assert.ok(lastCall);
+    assert.equal(
+      lastCall.url,
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent"
+    );
+    assert.equal(lastCall.options.headers["x-goog-api-key"], "AIza_TEST_KEY");
+    const body = JSON.parse(lastCall.options.body);
+    assert.equal(body.generationConfig.imageConfig.imageSize, "2K");
+  });
+
   test("returns undefined for short prompt", async (t) => {
     let called = false;
     const originalFetch = global.fetch;

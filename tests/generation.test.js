@@ -13,6 +13,77 @@ function createDeferred() {
 }
 
 test.describe("createGenerator", () => {
+  test("uses Nano Banana 2 for generation requests", async () => {
+    let providerCall;
+
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          selection: {
+            bounds: {
+              left: 0,
+              right: 100,
+              top: 0,
+              bottom: 100,
+              width: 100,
+              height: 100
+            }
+          }
+        }
+      },
+      core: {
+        showAlert: () => {}
+      },
+      ui: {
+        testCheckbox: { checked: false },
+        promptInput: { value: "test prompt" },
+        generateButton: { disabled: false, innerText: "Generate" },
+        allowNSFW: { checked: false },
+        temperature: { value: "1.0" },
+        topP: { value: "0.90" },
+        imageToProcess: {}
+      },
+      state: {
+        selectedModel: "gemini-3.1-flash-image-preview",
+        aspectRatio: "3:4",
+        textToImage: false,
+        imageArray: ["ref-a"],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: true,
+        apiKey: { "NanoBananaPro-api-key": "KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: false,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {}
+      },
+      generateWithProvider: async (modelId, options) => {
+        providerCall = { modelId, options };
+        return "generated-b64";
+      },
+      critiqueWithProvider: async function* () {},
+      logLine: () => {},
+      utils: {
+        pickTier: () => "2K"
+      },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image",
+      nanoBananaModelId: "gemini-3-pro-image-preview"
+    });
+
+    await generator.generate();
+
+    assert.equal(providerCall.modelId, "gemini-3.1-flash-image-preview");
+    assert.equal(providerCall.options.resolution, "2K");
+  });
+
   test("does not force Grok resolution to 1K", async () => {
     let providerCall;
 
@@ -379,6 +450,56 @@ test.describe("createGenerator", () => {
       },
       state: {
         selectedModel: "grok-imagine-image",
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: { async placeToCurrentDocAtSelection() {} },
+      generateWithProvider: async () => "generated-b64",
+      critiqueWithProvider: async function* () {
+        providerCalled = true;
+        yield "A";
+      },
+      logLine: () => {},
+      utils: { pickTier: () => "2K" },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image",
+      nanoBananaModelId: "gemini-3-pro-image-preview"
+    });
+
+    await generator.critique();
+
+    assert.equal(providerCalled, false);
+    assert.equal(alerts.length, 1);
+    assert.match(alerts[0], /Nano Banana Pro/);
+  });
+
+  test("critique rejects Nano Banana 2 before provider call", async () => {
+    const alerts = [];
+    let providerCalled = false;
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          width: 640,
+          height: 480,
+          selection: {}
+        }
+      },
+      core: {
+        showAlert: (message) => alerts.push(message)
+      },
+      ui: {
+        chatPromptInput: { value: "critique prompt" },
+        promptInput: { value: "critique prompt" },
+        chatOutput: { value: "", disabled: false, scrollTop: 0, scrollHeight: 0 },
+        critiqueButton: { disabled: false },
+        chatImageToProcess: {}
+      },
+      state: {
+        selectedModel: "gemini-3.1-flash-image-preview",
         currentJobCount: 0
       },
       selection: {

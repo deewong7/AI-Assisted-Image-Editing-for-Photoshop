@@ -1,4 +1,4 @@
-const supportedModels = ["gemini-3-pro-image-preview"];
+const supportedModels = ["gemini-3-pro-image-preview", "gemini-3.1-flash-image-preview"];
 const VERTEX_API_ENDPOINT = "https://aiplatform.googleapis.com";
 const AI_STUDIO_API_ENDPOINT = "https://generativelanguage.googleapis.com";
 

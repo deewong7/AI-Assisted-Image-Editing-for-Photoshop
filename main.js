@@ -15,6 +15,7 @@ const {
   SEEDREAM,
   SEEDREAM_5,
   NANOBANANA_PRO,
+  NANOBANANA_2,
   GROK_IMAGINE,
   DEFAULT_API_KEYS,
   DEFAULT_PLUGIN_PREFS,
@@ -85,7 +86,7 @@ entrypoints.setup({
 initializeUI({
   ui,
   state,
-  models: { SEEDREAM, SEEDREAM_5, NANOBANANA_PRO, GROK_IMAGINE },
+  models: { SEEDREAM, SEEDREAM_5, NANOBANANA_PRO, NANOBANANA_2, GROK_IMAGINE },
   logger,
   storage,
   defaultChatPromptText: DEFAULT_CHAT_PROMPT
@@ -94,7 +95,7 @@ initializeUI({
 bindEvents({
   ui,
   state,
-  models: { SEEDREAM, SEEDREAM_5, NANOBANANA_PRO, GROK_IMAGINE },
+  models: { SEEDREAM, SEEDREAM_5, NANOBANANA_PRO, NANOBANANA_2, GROK_IMAGINE },
   logger,
   storage,
   generator,

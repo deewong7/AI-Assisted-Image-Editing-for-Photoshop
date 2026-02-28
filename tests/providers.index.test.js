@@ -17,6 +17,10 @@ test.describe("providerMap (index)", () => {
       assert.equal(typeof providerMap[model]?.generateImage, "function");
     }
   });
+
+  test("maps Nano Banana 2 to google provider", () => {
+    assert.equal(providerMap["gemini-3.1-flash-image-preview"], google);
+  });
 });
 
 test.describe("generateWithProvider (index)", () => {
@@ -42,6 +46,23 @@ test.describe("generateWithProvider (index)", () => {
       () => generateWithProvider("missing-model", {}),
       /Unsupported model: missing-model/
     );
+  });
+
+  test("routes Nano Banana 2 through the google provider", async () => {
+    const originalGenerate = google.generateImage;
+    let captured;
+    google.generateImage = async (options) => {
+      captured = options;
+      return "ok";
+    };
+
+    try {
+      const result = await generateWithProvider("gemini-3.1-flash-image-preview", { prompt: "hello" });
+      assert.equal(result, "ok");
+      assert.equal(captured.modelId, "gemini-3.1-flash-image-preview");
+    } finally {
+      google.generateImage = originalGenerate;
+    }
   });
 });
 
