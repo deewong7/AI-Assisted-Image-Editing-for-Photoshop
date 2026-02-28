@@ -37,7 +37,7 @@ const pluginPrefs = storage.loadPluginPrefs(localStorage, DEFAULT_PLUGIN_PREFS);
 const state = createState({ ui, apiKey, promptPresets, pluginPrefs });
 
 const logger = createLogger(ui);
-const selection = createSelection({ core, imaging, logLine: logger.logLine });
+const selection = createSelection({ app, constants, core, imaging, logLine: logger.logLine });
 const placer = createPlacer({
   app,
   core,
