@@ -11,6 +11,7 @@ function createGenerator({
   logLine,
   utils,
   seedreamModelId,
+  seedream5ModelId,
   grokModelId,
   nanoBananaModelId
 }) {
@@ -85,7 +86,8 @@ function createGenerator({
       state.resolution = utils.pickTier(Math.max(bounds.width, bounds.height), {
         upgradeFactor: state.upgradeFactor,
         selectedModel: targetModel,
-        seedreamModelId
+        seedreamModelId,
+        seedream5ModelId
       });
     }
     const prompt = ui.promptInput?.value.trim();

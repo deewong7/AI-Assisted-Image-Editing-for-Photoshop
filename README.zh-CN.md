@@ -3,12 +3,13 @@
 
 [![Test](https://github.com/deewong7/AI-Assisted-Image-Editing-for-Photoshop/actions/workflows/tests.yml/badge.svg?branch=dev)](https://github.com/deewong7/AI-Assisted-Image-Editing-for-Photoshop/actions/workflows/tests.yml)
 
-把前沿的 image generation 和 image editing 直接带进 Photoshop。这个 UXP plugin 让你在不离开当前文档的情况下，选中区域、输入 prompt，并通过主流图像模型生成1K,2K,4K图片。
+把前沿的 image generation 和 image editing 直接带进 Photoshop。这个 UXP plugin 让你在不离开当前文档的情况下，选中区域、输入 prompt，并通过主流图像模型生成1K,2K,3K,4K图片。
 
 ## 这个插件能做什么
 - 在 Photoshop 内对选区进行生成与编辑
 - 支持多个 provider 和 model
-- `Nano Banana Pro` 与 `SeeDream 4.5/5.0` 支持 **4K** 输出
+- `Nano Banana Pro` 与 `SeeDream 4.5` 支持 **4K** 输出
+- `SeeDream 5.0` 支持 **2K** 与 **3K** 输出
 - 支持参考图功能
 - 支持自适应分辨率，在 quality 与 speed 间做平衡
 - 将结果以新图层形式放入当前文档

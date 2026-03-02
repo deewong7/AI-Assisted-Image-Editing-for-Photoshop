@@ -61,6 +61,7 @@ const generator = createGenerator({
   logLine: logger.logLine,
   utils,
   seedreamModelId: [SEEDREAM, SEEDREAM_5],
+  seedream5ModelId: SEEDREAM_5,
   grokModelId: GROK_IMAGINE,
   nanoBananaModelId: NANOBANANA_PRO
 });

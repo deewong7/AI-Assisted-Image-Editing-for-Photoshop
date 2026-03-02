@@ -1,4 +1,35 @@
-const supportedModels = ["doubao-seedream-4-5-251128", "doubao-seedream-5-0-260128"];
+const SEEDREAM = "doubao-seedream-4-5-251128";
+const SEEDREAM_5 = "doubao-seedream-5-0-260128";
+const supportedModels = [SEEDREAM, SEEDREAM_5];
+
+const MODEL_RESOLUTIONS = {
+  [SEEDREAM]: ["2K", "4K"],
+  [SEEDREAM_5]: ["2K", "3K"]
+};
+
+function parseResolutionTier(resolution) {
+  const match = /^(\d+)K$/i.exec(String(resolution || "").trim());
+  return match ? Number(match[1]) : NaN;
+}
+
+function normalizeResolution(resolution, modelId) {
+  const supportedResolutions = MODEL_RESOLUTIONS[modelId] || MODEL_RESOLUTIONS[SEEDREAM];
+  const normalizedResolution = String(resolution || "").trim().toUpperCase();
+
+  if (supportedResolutions.includes(normalizedResolution)) {
+    return normalizedResolution;
+  }
+
+  const requestedTier = parseResolutionTier(normalizedResolution);
+  const minResolution = supportedResolutions[0];
+  const maxResolution = supportedResolutions[supportedResolutions.length - 1];
+
+  if (!Number.isFinite(requestedTier) || requestedTier <= parseResolutionTier(minResolution)) {
+    return minResolution;
+  }
+
+  return maxResolution;
+}
 
 async function generateImage(options) {
   const {
@@ -21,10 +52,8 @@ async function generateImage(options) {
     effectivePrompt += ", aspect ratio: " + aspectRatio;
   }
 
-  let effectiveResolution = resolution;
-  if (effectiveResolution === "1K") {
-    effectiveResolution = "2K";
-  }
+  const targetModel = modelId || supportedModels[0];
+  const effectiveResolution = normalizeResolution(resolution, targetModel);
 
   let image;
   if (textToImage) {
@@ -47,7 +76,7 @@ async function generateImage(options) {
         "Authorization": "Bearer " + apiKey["SeeDream-api-key"]
       },
       body: JSON.stringify({
-        model: modelId || supportedModels[0],
+        model: targetModel,
         prompt: effectivePrompt,
         ...(typeof image !== "undefined" ? { image } : {}),
         size: effectiveResolution,

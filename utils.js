@@ -1,8 +1,19 @@
 const BASE_RESOLUTION = {
   "1K": 1024,
   "2K": 2048,
+  "3K": 3072,
   "4K": 4096
 };
+
+function matchesModel(selectedModel, targetModelId) {
+  if (!selectedModel || !targetModelId) {
+    return false;
+  }
+
+  return Array.isArray(targetModelId)
+    ? targetModelId.includes(selectedModel)
+    : selectedModel === targetModelId;
+}
 
 function decodeBase64ToBinaryString(base64, atobImpl) {
   if (typeof atobImpl === "function") {
@@ -42,23 +53,24 @@ function pickTier(longEdge, options = {}) {
     upgradeFactor = 1.5,
     selectedModel,
     seedreamModelId,
+    seedream5ModelId,
     base = BASE_RESOLUTION
   } = options;
 
+  const isSeedreamModel = matchesModel(selectedModel, seedreamModelId);
+  const isSeedream5Model = matchesModel(selectedModel, seedream5ModelId);
+
   if (longEdge <= base["1K"] * upgradeFactor) {
-    if (
-      selectedModel &&
-      seedreamModelId &&
-      (Array.isArray(seedreamModelId)
-        ? seedreamModelId.includes(selectedModel)
-        : selectedModel === seedreamModelId)
-    ) {
+    if (isSeedreamModel) {
       return "2K";
     }
     return "1K";
   }
   if (longEdge <= base["2K"] * upgradeFactor) {
     return "2K";
+  }
+  if (isSeedream5Model) {
+    return "3K";
   }
   return "4K";
 }

@@ -4,6 +4,7 @@ function getUI() {
     resolutionPicker: document.getElementById("resolutionPicker"),
     resolutionOption1K: document.getElementById("1K"),
     resolutionOption2K: document.getElementById("2K"),
+    resolutionOption3K: document.getElementById("3K"),
     resolutionOption4K: document.getElementById("4K"),
     resolutionPickerArea: document.getElementById("resolutionPickerArea"),
     aspectRatioPicker: document.getElementById("aspectRatioPicker"),
@@ -70,17 +71,41 @@ function getUI() {
   };
 }
 
+function syncResolutionSelection(ui, state, resolution) {
+  const resolutionOptions = {
+    "1K": ui.resolutionOption1K,
+    "2K": ui.resolutionOption2K,
+    "3K": ui.resolutionOption3K,
+    "4K": ui.resolutionOption4K
+  };
+
+  state.resolution = resolution;
+  if (ui.resolutionPicker) {
+    ui.resolutionPicker.value = resolution;
+  }
+
+  Object.entries(resolutionOptions).forEach(([value, option]) => {
+    if (option) {
+      option.selected = value === resolution;
+    }
+  });
+}
+
 function renderModelUI(ui, state, models, logLine) {
   if (typeof state.selectedModel === "undefined") return;
 
-  const isSeedreamModel =
-    state.selectedModel === models.SEEDREAM || state.selectedModel === models.SEEDREAM_5;
+  const isSeedreamModel = state.selectedModel === models.SEEDREAM;
+  const isSeedream5Model = state.selectedModel === models.SEEDREAM_5;
+  const currentResolution = state.resolution || ui.resolutionPicker?.value || "2K";
 
   if (ui.resolutionOption1K) {
     ui.resolutionOption1K.style.display = "";
   }
   if (ui.resolutionOption2K) {
     ui.resolutionOption2K.style.display = "";
+  }
+  if (ui.resolutionOption3K) {
+    ui.resolutionOption3K.style.display = "none";
   }
   if (ui.resolutionOption4K) {
     ui.resolutionOption4K.style.display = "";
@@ -90,25 +115,36 @@ function renderModelUI(ui, state, models, logLine) {
     if (ui.resolutionOption1K) {
       ui.resolutionOption1K.style.display = "none";
     }
-    if (ui.resolutionOption2K) {
-      ui.resolutionOption2K.selected = true;
-      state.resolution = "2K";
+    if (ui.resolutionOption3K) {
+      ui.resolutionOption3K.style.display = "none";
     }
-  } else if (state.selectedModel === models.GROK_IMAGINE) {
-    const currentResolution = state.resolution || ui.resolutionPicker?.value;
+    if (currentResolution !== "2K" && currentResolution !== "4K") {
+      syncResolutionSelection(ui, state, "2K");
+    }
+  } else if (isSeedream5Model) {
+    if (ui.resolutionOption1K) {
+      ui.resolutionOption1K.style.display = "none";
+    }
+    if (ui.resolutionOption3K) {
+      ui.resolutionOption3K.style.display = "";
+    }
     if (ui.resolutionOption4K) {
       ui.resolutionOption4K.style.display = "none";
       ui.resolutionOption4K.selected = false;
     }
-    if (currentResolution === "4K") {
-      if (ui.resolutionOption2K) {
-        ui.resolutionOption2K.selected = true;
-        state.resolution = "2K";
-      } else if (ui.resolutionOption1K) {
-        ui.resolutionOption1K.selected = true;
-        state.resolution = "1K";
-      }
+    if (currentResolution !== "2K" && currentResolution !== "3K") {
+      syncResolutionSelection(ui, state, "2K");
     }
+  } else if (state.selectedModel === models.GROK_IMAGINE) {
+    if (ui.resolutionOption4K) {
+      ui.resolutionOption4K.style.display = "none";
+      ui.resolutionOption4K.selected = false;
+    }
+    if (currentResolution === "4K" || currentResolution === "3K") {
+      syncResolutionSelection(ui, state, ui.resolutionOption2K ? "2K" : "1K");
+    }
+  } else if (currentResolution === "3K") {
+    syncResolutionSelection(ui, state, "2K");
   }
 
   if (ui.googleModel) {

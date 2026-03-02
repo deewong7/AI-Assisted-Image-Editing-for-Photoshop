@@ -57,6 +57,33 @@ test.describe("generateImage (bytedance)", () => {
     ]);
   });
 
+  test("clips SeeDream 5.0 resolution to 3K", async (t) => {
+    const originalFetch = global.fetch;
+    let lastCall;
+    global.fetch = async (url, options) => {
+      lastCall = { url, options };
+      return {
+        ok: true,
+        json: async () => ({ data: [{ b64_json: "result" }] })
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    await generateImage({
+      prompt: "hello",
+      base64Image: "BASE",
+      apiKey: { "SeeDream-api-key": "k" },
+      resolution: "4K",
+      modelId: "doubao-seedream-5-0-260128"
+    });
+
+    const body = JSON.parse(lastCall.options.body);
+    assert.equal(body.model, "doubao-seedream-5-0-260128");
+    assert.equal(body.size, "3K");
+  });
+
   test("throws on non-ok response", async (t) => {
     const originalFetch = global.fetch;
     global.fetch = async () => ({
