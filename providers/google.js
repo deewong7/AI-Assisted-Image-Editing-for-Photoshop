@@ -19,6 +19,12 @@ function getApiConfig(apiKey, modelId, apiName) {
   };
 }
 
+function getGenerationBackendName(options = {}) {
+  const { apiKey = {}, modelId } = options;
+  const { useVertexApi } = getApiConfig(apiKey, modelId, "generateContent");
+  return useVertexApi ? "Vertex AI" : "Google AI Studio";
+}
+
 function extractTextFromPayload(payload, modelId) {
   if (payload?.promptFeedback?.blockReasonMessage) {
     throw new Error("Prompt was blocked: " + payload.promptFeedback.blockReasonMessage);
@@ -449,5 +455,6 @@ async function* critiqueImageStream(options) {
 module.exports = {
   supportedModels,
   generateImage,
-  critiqueImageStream
+  critiqueImageStream,
+  getGenerationBackendName
 };

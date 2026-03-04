@@ -50,6 +50,43 @@ function applyCritiquePromptEditState(ui, defaultChatPromptText = "") {
   }
 }
 
+function syncBatchCountSelection(ui, count = 1) {
+  if (!ui.batchCountPicker) return;
+
+  const normalizedCount = String(Math.min(4, Math.max(1, Number(count) || 1)));
+  ui.batchCountPicker.value = normalizedCount;
+
+  const menuItems = typeof ui.batchCountPicker.querySelectorAll === "function"
+    ? ui.batchCountPicker.querySelectorAll("sp-menu-item")
+    : [];
+  menuItems.forEach(item => {
+    item.selected = item.value === normalizedCount;
+  });
+}
+
+function applyBatchGenerationState(ui, state) {
+  const enabled = state.enableBatchGeneration === true;
+  if (ui.enableBatchGeneration) {
+    ui.enableBatchGeneration.checked = enabled;
+  }
+  if (ui.batchCountControl) {
+    ui.batchCountControl.style.display = enabled ? "" : "none";
+  }
+  if (!enabled) {
+    state.batchCount = 1;
+    syncBatchCountSelection(ui, 1);
+  } else {
+    syncBatchCountSelection(ui, state.batchCount);
+  }
+}
+
+function savePluginPrefsState(storage, state) {
+  storage.savePluginPrefs(localStorage, {
+    persistGeneratedImages: state.persistGeneratedImages === true,
+    enableBatchGeneration: state.enableBatchGeneration === true
+  });
+}
+
 function initializeUI({ ui, state, models, logger, storage, defaultChatPromptText = "" }) {
   updateApiKey(ui, state, storage, false);
   populatePromptPresets(ui, state.promptPresets);
@@ -63,6 +100,7 @@ function initializeUI({ ui, state, models, logger, storage, defaultChatPromptTex
   if (ui.persistGeneratedImages) {
     ui.persistGeneratedImages.checked = state.persistGeneratedImages === true;
   }
+  applyBatchGenerationState(ui, state);
   applyCritiquePromptEditState(ui, defaultChatPromptText);
 }
 
@@ -104,6 +142,15 @@ function bindEvents({
       state.aspectRatio = e.target.value;
       console.log("Update aspect ratio to:", state.aspectRatio);
       logLine("Update aspect ratio to:", state.aspectRatio);
+    });
+  }
+
+  if (ui.batchCountPicker) {
+    ui.batchCountPicker.addEventListener("change", (e) => {
+      state.batchCount = Math.min(4, Math.max(1, Number(e.target.value) || 1));
+      syncBatchCountSelection(ui, state.batchCount);
+      console.log("Update batch count to:", state.batchCount);
+      logLine("Update batch count to:", state.batchCount);
     });
   }
 
@@ -343,9 +390,15 @@ function bindEvents({
   if (ui.persistGeneratedImages) {
     ui.persistGeneratedImages.addEventListener("click", (e) => {
       state.persistGeneratedImages = e.target.checked;
-      storage.savePluginPrefs(localStorage, {
-        persistGeneratedImages: state.persistGeneratedImages
-      });
+      savePluginPrefsState(storage, state);
+    });
+  }
+
+  if (ui.enableBatchGeneration) {
+    ui.enableBatchGeneration.addEventListener("click", (e) => {
+      state.enableBatchGeneration = e.target.checked;
+      applyBatchGenerationState(ui, state);
+      savePluginPrefsState(storage, state);
     });
   }
 

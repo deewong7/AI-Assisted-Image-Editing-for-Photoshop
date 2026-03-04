@@ -19,6 +19,17 @@ async function generateWithProvider(modelId, options) {
   return provider.generateImage({ ...options, modelId });
 }
 
+function getGenerationBackendName(modelId, options) {
+  const provider = providerMap[modelId];
+  if (!provider) {
+    throw new Error("Unsupported model: " + modelId);
+  }
+  if (typeof provider.getGenerationBackendName !== "function") {
+    return undefined;
+  }
+  return provider.getGenerationBackendName({ ...options, modelId });
+}
+
 function critiqueWithProvider(modelId, options) {
   const provider = providerMap[modelId];
   if (!provider) {
@@ -32,6 +43,7 @@ function critiqueWithProvider(modelId, options) {
 
 module.exports = {
   generateWithProvider,
+  getGenerationBackendName,
   critiqueWithProvider,
   providerMap
 };

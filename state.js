@@ -11,7 +11,8 @@ const DEFAULT_API_KEYS = Object.freeze({
 });
 
 const DEFAULT_PLUGIN_PREFS = Object.freeze({
-  persistGeneratedImages: false
+  persistGeneratedImages: false,
+  enableBatchGeneration: false
 });
 
 const DEFAULT_PROMPT_PRESETS = {
@@ -126,12 +127,14 @@ function createState({ ui, apiKey, promptPresets, pluginPrefs } = {}) {
     selectedModel: modelValue,
     resolution: resolutionValue,
     aspectRatio: aspectRatioValue,
+    batchCount: Math.min(4, Math.max(1, Number(ui?.batchCountPicker?.value) || 1)),
     adaptiveResolutionSetting: true,
     upgradeFactor: 1.5,
     showModelParameters: false,
     temperature: 0.6,
     topP: 0.95,
     imageArray: [],
+    enableBatchGeneration: prefs.enableBatchGeneration === true,
     skipMask: false,
     persistGeneratedImages: prefs.persistGeneratedImages === true,
     textToImage: false,

@@ -1,6 +1,26 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { generateImage, critiqueImageStream } = require("../providers/google.js");
+const { generateImage, critiqueImageStream, getGenerationBackendName } = require("../providers/google.js");
+
+test.describe("getGenerationBackendName (google)", () => {
+  test("returns Vertex AI when API key starts with AQ", () => {
+    const backendName = getGenerationBackendName({
+      apiKey: { "NanoBananaPro-api-key": "AQ_KEY" },
+      modelId: "gemini-3.1-flash-image-preview"
+    });
+
+    assert.equal(backendName, "Vertex AI");
+  });
+
+  test("returns Google AI Studio when API key does not start with AQ", () => {
+    const backendName = getGenerationBackendName({
+      apiKey: { "NanoBananaPro-api-key": "AIza_TEST_KEY" },
+      modelId: "gemini-3.1-flash-image-preview"
+    });
+
+    assert.equal(backendName, "Google AI Studio");
+  });
+});
 
 test.describe("generateImage (google)", () => {
   test("supports Nano Banana 2 over Vertex endpoint", async (t) => {

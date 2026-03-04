@@ -1,4 +1,5 @@
-const { setImagePreview, setChatImagePreview, renderJobCount } = require('./ui.js')
+const { getGenerationBackendName } = require("./providers/index.js")
+const { setImagePreview, setChatImagePreview, renderJobCount, renderBatchProgress } = require('./ui.js')
 function createGenerator({
   app,
   core,
@@ -63,160 +64,323 @@ function createGenerator({
       bounds.height > 0;
   }
 
+  function clampBatchCount(value) {
+    return Math.min(4, Math.max(1, Number(value) || 1))
+  }
+
+  function setGenerateButtonIdle() {
+    if (!ui.generateButton) {
+      return
+    }
+    ui.generateButton.innerText = ui.testCheckbox?.checked ? "TEST" : "Generate"
+  }
+
+  function setGenerateButtonProgress(current, total) {
+    if (!ui.generateButton) {
+      return
+    }
+    ui.generateButton.innerText = total > 1 ? `Generating ${current}/${total}...` : "Generating..."
+  }
+
+  function createFetchLogMessage(targetModel, requestOptions) {
+    const resolution = requestOptions?.resolution
+    const baseMessage = "Fetching " + resolution + " image to " + targetModel
+    if (targetModel === "localtest") {
+      return baseMessage
+    }
+
+    const backendName = getGenerationBackendName(targetModel, requestOptions)
+    return backendName ? `${baseMessage} via ${backendName}` : baseMessage
+  }
+
+  function createRunSummaryMessage(total, successCount, elapsedSeconds, targetModel) {
+    if (total <= 1) {
+      const status = successCount === 1 ? "finished" : "failed"
+      return `Job ${status} after ${elapsedSeconds} seconds - ${targetModel}`
+    }
+
+    if (successCount === total) {
+      return `Batch finished after ${elapsedSeconds} seconds - ${successCount}/${total} succeeded - ${targetModel}`
+    }
+
+    if (successCount > 0) {
+      return `Batch finished after ${elapsedSeconds} seconds - ${successCount}/${total} succeeded, ${total - successCount} failed - ${targetModel}`
+    }
+
+    return `Batch failed after ${elapsedSeconds} seconds - 0/${total} succeeded - ${targetModel}`
+  }
+
+  async function generateSingleImage(targetModel, requestOptions, base64Data) {
+    if (targetModel === "localtest") {
+      const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+      await sleep(3000)
+      return base64Data
+    }
+
+    return generateWithProvider(targetModel, {
+      ...requestOptions,
+      base64Image: base64Data
+    })
+  }
+
+  function cloneRequestOptions(requestOptions) {
+    return {
+      ...requestOptions,
+      referenceImages: Array.isArray(requestOptions.referenceImages) ? [...requestOptions.referenceImages] : [],
+      apiKey: requestOptions.apiKey ? { ...requestOptions.apiKey } : requestOptions.apiKey
+    }
+  }
+
+  function createBatchTask(targetModel, requestOptions, base64Data, batchNumber, totalBatchCount, onSettled) {
+    return Promise.resolve()
+      .then(async () => {
+        const generatedBase64 = await generateSingleImage(targetModel, cloneRequestOptions(requestOptions), base64Data)
+        if (!generatedBase64 || generatedBase64.length === 0) {
+          throw new Error("no image data returned")
+        }
+
+        if (typeof logLine === "function") {
+          logLine(`Batch ${batchNumber}/${totalBatchCount} finished`)
+        }
+        return {
+          batchNumber,
+          generatedBase64
+        }
+      })
+      .catch(error => {
+        const message = `Batch ${batchNumber}/${totalBatchCount} failed: ${error?.message || String(error)}`
+        console.error("Error during remote API call: " + error)
+        if (typeof logLine === "function") {
+          logLine(message)
+        }
+        throw error
+      })
+      .finally(() => {
+        if (typeof onSettled === "function") {
+          onSettled()
+        }
+      })
+  }
+
   async function generate() {
-    if (ui.testCheckbox && ui.testCheckbox.checked) {
-      state.selectedModel = "localtest";
-      if (ui.generateButton) {
-        ui.generateButton.innerText = "Test";
-      }
-    }
-
-    const selectionData = app.activeDocument.selection;
+    const selectionData = app.activeDocument.selection
     if (!selectionData?.bounds) {
-      core.showAlert("No Selection.");
-      return;
+      core.showAlert("No Selection.")
+      return
     }
 
-    const targetModel = state.selectedModel;
-    const bounds = createBoundsFromSelection(selectionData.bounds);
+    const targetModel = ui.testCheckbox?.checked ? "localtest" : state.selectedModel
+    const bounds = createBoundsFromSelection(selectionData.bounds)
 
     if (state.adaptiveResolutionSetting) {
-      const upgradeFactorValue = parseFloat(ui.upgradeFactorSlider?.value);
-      state.upgradeFactor = Number.isFinite(upgradeFactorValue) ? upgradeFactorValue : 1.5;
+      const upgradeFactorValue = parseFloat(ui.upgradeFactorSlider?.value)
+      state.upgradeFactor = Number.isFinite(upgradeFactorValue) ? upgradeFactorValue : 1.5
       state.resolution = utils.pickTier(Math.max(bounds.width, bounds.height), {
         upgradeFactor: state.upgradeFactor,
         selectedModel: targetModel,
         seedreamModelId,
         seedream5ModelId
-      });
-    }
-    const prompt = ui.promptInput?.value.trim();
-    if (prompt === "") {
-      core.showAlert("Please input prompt.");
-      return;
+      })
     }
 
-    console.log("Prompt: " + prompt);
+    const prompt = ui.promptInput?.value.trim()
+    if (prompt === "") {
+      core.showAlert("Please input prompt.")
+      return
+    }
+
+    const targetBatchCount = state.enableBatchGeneration === true
+      ? clampBatchCount(state.batchCount)
+      : 1
+    const shouldFetchBase64 = !state.textToImage || targetModel === "localtest"
+    const temperatureInput = parseFloat(ui.temperature?.value)
+    const topPInput = parseFloat(ui.topP?.value)
+    state.temperature = Number.isFinite(temperatureInput) ? temperatureInput : 1.0
+    state.topP = Number.isFinite(topPInput) ? topPInput : 0.90
+    state.batchCount = targetBatchCount
+
+    const requestOptions = {
+      prompt,
+      resolution: state.resolution,
+      aspectRatio: state.aspectRatio,
+      referenceImages: Array.isArray(state.imageArray) ? [...state.imageArray] : [],
+      textToImage: state.textToImage,
+      apiKey: { ...state.apiKey },
+      showModelParameters: state.showModelParameters,
+      temperature: state.temperature,
+      topP: state.topP,
+      logLine,
+      nsfw: ui.allowNSFW?.checked
+    }
+    const placementOptions = {
+      skipMask: state.skipMask,
+      persistGeneratedImages: state.persistGeneratedImages
+    }
+
+    console.log("Prompt: " + prompt)
     if (typeof logLine === "function") {
-      logLine("-----" + targetModel + "-----");
+      logLine("-----" + targetModel + "-----")
     }
 
     if (ui.errorArea) {
-      ui.errorArea.innerText = "";
-      ui.errorArea.style.display = "none";
+      ui.errorArea.innerText = ""
+      ui.errorArea.style.display = "none"
     }
 
-    if (ui.generateButton) {
-      ui.generateButton.disabled = true;
-    }
+    let base64Data = null
+    let generatedImages = []
+    let jobCountIncremented = false
+    const jobStartMs = Date.now()
 
-    const shouldFetchBase64 = !state.textToImage || targetModel === "localtest";
-    let base64Data;
-    if (shouldFetchBase64) {
-      try {
-        base64Data = await selection.getImageDataToBase64(bounds);
-      } catch (error) {
-        if (typeof logLine === "function") {
-          logLine("Check log for more detailed error message.");
-        }
-      } finally {
-        if (ui.generateButton) {
-          ui.generateButton.disabled = false;
-        }
-      }
-
-      if (!base64Data || base64Data.length === 0) {
-        console.log("No base64 data obtained from selection. Aborting.");
-        if (typeof logLine === "function") {
-          logLine("No base64 data obtained from selection. Aborting.");
-        }
-        return;
-      }
-    } else if (ui.generateButton) {
-      ui.generateButton.disabled = false;
-    }
-
-    if (!state.textToImage && ui.imageToProcess && base64Data) {
-      setImagePreview(ui, base64Data);
-      console.log("image base64 length: " + base64Data.length);
-    }
-
-    let generatedBase64 = null;
-    let elapsedSeconds = null;
-    let jobStartMs = null;
-    let jobCountIncremented = false;
     try {
-      if (typeof logLine === "function") {
-        logLine("Fetching " + state.resolution + " image to " + targetModel);
+      if (ui.generateButton) {
+        ui.generateButton.disabled = true
       }
 
-      state.currentJobCount = Math.max(0, (state.currentJobCount || 0) + 1);
-      renderJobCount(ui, state.currentJobCount);
-      jobCountIncremented = true;
-
-      jobStartMs = Date.now();
-      if (targetModel === "localtest") {
-        const sleep = ms => new Promise(r => setTimeout(r, ms));
-        await sleep(3000);
-        generatedBase64 = base64Data;
+      state.currentJobCount = Math.max(0, (state.currentJobCount || 0) + 1)
+      if (targetBatchCount > 1) {
+        renderBatchProgress(ui, 0, targetBatchCount)
       } else {
-        const temperatureInput = parseFloat(ui.temperature?.value);
-        const topPInput = parseFloat(ui.topP?.value);
-        state.temperature = Number.isFinite(temperatureInput) ? temperatureInput : 1.0;
-        state.topP = Number.isFinite(topPInput) ? topPInput : 0.90;
-        const nsfw = ui.allowNSFW?.checked;
+        renderJobCount(ui, state.currentJobCount)
+      }
+      jobCountIncremented = true
 
-        generatedBase64 = await generateWithProvider(targetModel, {
-          prompt,
-          base64Image: base64Data,
-          resolution: state.resolution,
-          aspectRatio: state.aspectRatio,
-          referenceImages: state.imageArray,
-          textToImage: state.textToImage,
-          apiKey: state.apiKey,
-          showModelParameters: state.showModelParameters,
-          temperature: state.temperature,
-          topP: state.topP,
-          logLine,
-          nsfw
-        });
-      }
-    } catch (error) {
-      console.error("Error during remote API call: " + error);
-      if (typeof logLine === "function") {
-        logLine("Error during remote API call:\n" + error.message);
-      }
-      return;
-    } finally {
-      elapsedSeconds = Math.round((Date.now() - jobStartMs) / 1000);
-      if (jobCountIncremented) {
-        state.currentJobCount = Math.max(0, (state.currentJobCount || 0) - 1);
-        renderJobCount(ui, state.currentJobCount);
-      }
-    }
-
-    try {
-      console.log("placing generated image to document, length: ", generatedBase64.length);
-      if (typeof logLine === "function") {
-        logLine("Placing server generated image to document, length: " + generatedBase64.length);
-      }
-      await placer.placeToCurrentDocAtSelection(generatedBase64, bounds, targetModel, {
-        skipMask: state.skipMask,
-        persistGeneratedImages: state.persistGeneratedImages
-      });
-    } catch (error) {
-      console.error("Error placing generated image to document: " + error);
-      if (typeof logLine === "function") {
-        logLine("Error placing generated image to document: " + error);
-      }
-    } finally {
-      if (elapsedSeconds !== null) {
-        const status = generatedBase64 ? "finished" : "failed";
-        const message = `Job ${status} after ${elapsedSeconds} seconds - ${targetModel}`;
-        console.log(message);
-        if (typeof logLine === "function") {
-          logLine(message);
+      if (shouldFetchBase64) {
+        try {
+          base64Data = await selection.getImageDataToBase64(bounds)
+        } catch (error) {
+          if (typeof logLine === "function") {
+            logLine("Check log for more detailed error message.")
+          }
+          return
         }
+
+        if (!base64Data || base64Data.length === 0) {
+          console.log("No base64 data obtained from selection. Aborting.")
+          if (typeof logLine === "function") {
+            logLine("No base64 data obtained from selection. Aborting.")
+          }
+          return
+        }
+      }
+
+      if (!requestOptions.textToImage && ui.imageToProcess && base64Data) {
+        setImagePreview(ui, base64Data)
+        console.log("image base64 length: " + base64Data.length)
+      }
+
+      if (targetBatchCount > 1) {
+        let completedCount = 0
+        setGenerateButtonProgress(0, targetBatchCount)
+        renderBatchProgress(ui, 0, targetBatchCount)
+
+        const handleTaskSettled = () => {
+          completedCount += 1
+          setGenerateButtonProgress(completedCount, targetBatchCount)
+          renderBatchProgress(ui, completedCount, targetBatchCount)
+        }
+
+        const batchTasks = []
+        for (let index = 0; index < targetBatchCount; index += 1) {
+          const batchNumber = index + 1
+          if (typeof logLine === "function") {
+            logLine(`Batch ${batchNumber}/${targetBatchCount} started`)
+            logLine(createFetchLogMessage(targetModel, requestOptions))
+          }
+          batchTasks.push(
+            createBatchTask(
+              targetModel,
+              requestOptions,
+              base64Data,
+              batchNumber,
+              targetBatchCount,
+              handleTaskSettled
+            )
+          )
+        }
+
+        const settledResults = await Promise.allSettled(batchTasks)
+        generatedImages = settledResults
+          .filter(result => result.status === "fulfilled" && result.value?.generatedBase64)
+          .map(result => result.value.generatedBase64)
+      } else {
+        setGenerateButtonProgress(1, targetBatchCount)
+        if (typeof logLine === "function") {
+          logLine("Batch 1/1 started")
+          logLine(createFetchLogMessage(targetModel, requestOptions))
+        }
+
+        try {
+          const generatedBase64 = await generateSingleImage(targetModel, cloneRequestOptions(requestOptions), base64Data)
+          if (!generatedBase64 || generatedBase64.length === 0) {
+            const message = "Batch 1/1 failed: no image data returned"
+            console.log(message)
+            if (typeof logLine === "function") {
+              logLine(message)
+            }
+          } else {
+            generatedImages.push(generatedBase64)
+            if (typeof logLine === "function") {
+              logLine("Batch 1/1 finished")
+            }
+          }
+        } catch (error) {
+          const message = `Batch 1/1 failed: ${error?.message || String(error)}`
+          console.error("Error during remote API call: " + error)
+          if (typeof logLine === "function") {
+            logLine(message)
+          }
+        }
+      }
+
+      if (generatedImages.length === 0) {
+        return
+      }
+
+      if (generatedImages.length > 1) {
+        console.log("placing generated image batch to document, count:", generatedImages.length)
+        if (typeof logLine === "function") {
+          logLine("Placing generated image batch to document, count: " + generatedImages.length)
+        }
+      } else {
+        console.log("placing generated image to document, length: ", generatedImages[0].length)
+        if (typeof logLine === "function") {
+          logLine("Placing server generated image to document, length: " + generatedImages[0].length)
+        }
+      }
+
+      if (targetBatchCount > 1 && typeof placer.placeBatchToCurrentDocAtSelection === "function") {
+        await placer.placeBatchToCurrentDocAtSelection(generatedImages, bounds, targetModel, placementOptions)
+      } else if (generatedImages.length === 1) {
+        await placer.placeToCurrentDocAtSelection(generatedImages[0], bounds, targetModel, placementOptions)
+      } else if (typeof placer.placeBatchToCurrentDocAtSelection === "function") {
+        await placer.placeBatchToCurrentDocAtSelection(generatedImages, bounds, targetModel, placementOptions)
+      } else {
+        for (const generatedBase64 of generatedImages) {
+          await placer.placeToCurrentDocAtSelection(generatedBase64, bounds, targetModel, placementOptions)
+        }
+      }
+    } catch (error) {
+      console.error("Error placing generated image to document: " + error)
+      if (typeof logLine === "function") {
+        logLine("Error placing generated image to document: " + error)
+      }
+    } finally {
+      const elapsedSeconds = Math.round((Date.now() - jobStartMs) / 1000)
+      if (jobCountIncremented) {
+        state.currentJobCount = Math.max(0, (state.currentJobCount || 0) - 1)
+        renderJobCount(ui, state.currentJobCount)
+        renderBatchProgress(ui, 0, 0)
+      }
+      if (ui.generateButton) {
+        ui.generateButton.disabled = false
+      }
+      setGenerateButtonIdle()
+
+      const message = createRunSummaryMessage(targetBatchCount, generatedImages.length, elapsedSeconds, targetModel)
+      console.log(message)
+      if (typeof logLine === "function") {
+        logLine(message)
       }
     }
   }

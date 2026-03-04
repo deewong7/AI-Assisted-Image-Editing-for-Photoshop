@@ -12,9 +12,16 @@ function createDeferred() {
   return { promise, resolve, reject };
 }
 
+async function flushAsyncWork() {
+  await Promise.resolve();
+  await Promise.resolve();
+  await new Promise(resolve => setImmediate(resolve));
+}
+
 test.describe("createGenerator", () => {
   test("uses Nano Banana 2 for generation requests", async () => {
     let providerCall;
+    const logs = [];
 
     const generator = createGenerator({
       app: {
@@ -69,7 +76,9 @@ test.describe("createGenerator", () => {
         return "generated-b64";
       },
       critiqueWithProvider: async function* () {},
-      logLine: () => {},
+      logLine: (...parts) => {
+        logs.push(parts.join(" "));
+      },
       utils: {
         pickTier: () => "2K"
       },
@@ -82,10 +91,15 @@ test.describe("createGenerator", () => {
 
     assert.equal(providerCall.modelId, "gemini-3.1-flash-image-preview");
     assert.equal(providerCall.options.resolution, "2K");
+    assert.equal(
+      logs.some(line => line.includes("Fetching 2K image to gemini-3.1-flash-image-preview via Google AI Studio")),
+      true
+    );
   });
 
   test("does not force Grok resolution to 1K", async () => {
     let providerCall;
+    const logs = [];
 
     const generator = createGenerator({
       app: {
@@ -139,7 +153,9 @@ test.describe("createGenerator", () => {
         return "generated-b64";
       },
       critiqueWithProvider: async function* () {},
-      logLine: () => {},
+      logLine: (...parts) => {
+        logs.push(parts.join(" "));
+      },
       utils: {
         pickTier: () => "4K"
       },
@@ -151,6 +167,8 @@ test.describe("createGenerator", () => {
 
     assert.equal(providerCall.modelId, "grok-imagine-image");
     assert.equal(providerCall.options.resolution, "2K");
+    assert.equal(logs.some(line => line.includes("Fetching 2K image to grok-imagine-image")), true);
+    assert.equal(logs.some(line => line.includes("Fetching 2K image to grok-imagine-image via ")), false);
   });
 
   test("uses 3K adaptive resolution for SeeDream 5", async () => {
@@ -186,7 +204,7 @@ test.describe("createGenerator", () => {
         upgradeFactorSlider: { value: "1.5" }
       },
       state: {
-        selectedModel: "seedream-5",
+        selectedModel: "doubao-seedream-5-0-260128",
         aspectRatio: "3:4",
         textToImage: false,
         imageArray: [],
@@ -218,17 +236,422 @@ test.describe("createGenerator", () => {
           return "3K";
         }
       },
-      seedreamModelId: ["seedream-4", "seedream-5"],
-      seedream5ModelId: "seedream-5",
+      seedreamModelId: ["doubao-seedream-4-5-251128", "doubao-seedream-5-0-260128"],
+      seedream5ModelId: "doubao-seedream-5-0-260128",
       grokModelId: "grok-imagine-image"
     });
 
     await generator.generate();
 
     assert.equal(pickTierOptions.longEdge, 4000);
-    assert.equal(pickTierOptions.options.seedream5ModelId, "seedream-5");
-    assert.equal(providerCall.modelId, "seedream-5");
+    assert.equal(pickTierOptions.options.seedream5ModelId, "doubao-seedream-5-0-260128");
+    assert.equal(providerCall.modelId, "doubao-seedream-5-0-260128");
     assert.equal(providerCall.options.resolution, "3K");
+  });
+
+  test("starts all batch requests before awaiting results and places after all settle", async () => {
+    const deferreds = Array.from({ length: 4 }, () => createDeferred());
+    const providerCalls = [];
+    const batchPlaceCalls = [];
+    const logs = [];
+    const ui = {
+      testCheckbox: { checked: false },
+      promptInput: { value: "batch prompt" },
+      generateButton: { disabled: false, innerText: "Generate" },
+      allowNSFW: { checked: false },
+      temperature: { value: "1.0" },
+      topP: { value: "0.90" },
+      imageToProcess: {},
+      jobCount: { style: { display: "none" }, textContent: "" }
+    };
+
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          selection: {
+            bounds: {
+              left: 0,
+              right: 100,
+              top: 0,
+              bottom: 100,
+              width: 100,
+              height: 100
+            }
+          }
+        }
+      },
+      core: {
+        showAlert: () => {}
+      },
+      ui,
+      state: {
+        selectedModel: "gemini-3.1-flash-image-preview",
+        aspectRatio: "3:4",
+        enableBatchGeneration: true,
+        batchCount: 4,
+        textToImage: false,
+        imageArray: ["ref-a"],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: true,
+        apiKey: { "NanoBananaPro-api-key": "AQ_KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: false,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {
+        },
+        async placeBatchToCurrentDocAtSelection(images) {
+          batchPlaceCalls.push(images);
+        }
+      },
+      generateWithProvider: async (modelId, options) => {
+        const callIndex = providerCalls.length;
+        providerCalls.push({ modelId, options });
+        return deferreds[callIndex].promise;
+      },
+      critiqueWithProvider: async function* () {},
+      logLine: (...parts) => {
+        logs.push(parts.join(" "));
+      },
+      utils: {
+        pickTier: () => "2K"
+      },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image",
+      nanoBananaModelId: "gemini-3-pro-image-preview"
+    });
+
+    const runPromise = generator.generate();
+    await flushAsyncWork();
+
+    assert.equal(providerCalls.length, 4);
+    assert.equal(batchPlaceCalls.length, 0);
+    assert.equal(ui.generateButton.innerText, "Generating 0/4...");
+    assert.equal(ui.jobCount.textContent, "Batch Progress: 0/4");
+    assert.equal(
+      logs.some(line => line.includes("Fetching 2K image to gemini-3.1-flash-image-preview via Vertex AI")),
+      true
+    );
+
+    deferreds[2].resolve("generated-b64-3");
+    await flushAsyncWork();
+    assert.equal(batchPlaceCalls.length, 0);
+    assert.equal(ui.generateButton.innerText, "Generating 1/4...");
+    assert.equal(ui.jobCount.textContent, "Batch Progress: 1/4");
+
+    deferreds[0].resolve("generated-b64-1");
+    await flushAsyncWork();
+    assert.equal(ui.generateButton.innerText, "Generating 2/4...");
+    assert.equal(ui.jobCount.textContent, "Batch Progress: 2/4");
+
+    deferreds[3].resolve("generated-b64-4");
+    await flushAsyncWork();
+    assert.equal(batchPlaceCalls.length, 0);
+    assert.equal(ui.generateButton.innerText, "Generating 3/4...");
+    assert.equal(ui.jobCount.textContent, "Batch Progress: 3/4");
+
+    deferreds[1].resolve("generated-b64-2");
+    await runPromise;
+
+    assert.deepEqual(batchPlaceCalls[0], [
+      "generated-b64-1",
+      "generated-b64-2",
+      "generated-b64-3",
+      "generated-b64-4"
+    ]);
+    assert.equal(ui.generateButton.innerText, "Generate");
+    assert.equal(ui.jobCount.style.display, "none");
+    assert.equal(ui.jobCount.textContent, "");
+  });
+
+  test("places successful batch results after all requests settle even when completions are out of order", async () => {
+    const deferreds = Array.from({ length: 4 }, () => createDeferred());
+    const logs = [];
+    const batchPlaceCalls = [];
+    let providerCallCount = 0;
+    const ui = {
+      testCheckbox: { checked: false },
+      promptInput: { value: "batch prompt" },
+      generateButton: { disabled: false, innerText: "Generate" },
+      allowNSFW: { checked: false },
+      temperature: { value: "1.0" },
+      topP: { value: "0.90" },
+      imageToProcess: {},
+      jobCount: { style: { display: "none" }, textContent: "" }
+    };
+
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          selection: {
+            bounds: {
+              left: 0,
+              right: 100,
+              top: 0,
+              bottom: 100,
+              width: 100,
+              height: 100
+            }
+          }
+        }
+      },
+      core: {
+        showAlert: () => {}
+      },
+      ui,
+      state: {
+        selectedModel: "gemini-3.1-flash-image-preview",
+        aspectRatio: "3:4",
+        enableBatchGeneration: true,
+        batchCount: 4,
+        textToImage: false,
+        imageArray: [],
+        skipMask: false,
+        persistGeneratedImages: true,
+        showModelParameters: false,
+        apiKey: { "NanoBananaPro-api-key": "KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: false,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {},
+        async placeBatchToCurrentDocAtSelection(images, bounds, suffix, options) {
+          batchPlaceCalls.push({ images, bounds, suffix, options });
+        }
+      },
+      generateWithProvider: async () => {
+        const callIndex = providerCallCount;
+        providerCallCount += 1;
+        return deferreds[callIndex].promise;
+      },
+      critiqueWithProvider: async function* () {},
+      logLine: (...parts) => {
+        logs.push(parts.join(" "));
+      },
+      utils: {
+        pickTier: () => "2K"
+      },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image",
+      nanoBananaModelId: "gemini-3-pro-image-preview"
+    });
+
+    const runPromise = generator.generate();
+    await flushAsyncWork();
+
+    deferreds[2].resolve("generated-b64-3");
+    await flushAsyncWork();
+    deferreds[1].reject(new Error("provider failed"));
+    await flushAsyncWork();
+    deferreds[0].resolve("generated-b64-1");
+    await flushAsyncWork();
+    assert.equal(batchPlaceCalls.length, 0);
+    assert.equal(ui.generateButton.innerText, "Generating 3/4...");
+    assert.equal(ui.jobCount.textContent, "Batch Progress: 3/4");
+
+    deferreds[3].reject(new Error("provider failed"));
+    await runPromise;
+
+    assert.equal(batchPlaceCalls.length, 1);
+    assert.deepEqual(batchPlaceCalls[0].images, ["generated-b64-1", "generated-b64-3"]);
+    assert.equal(batchPlaceCalls[0].suffix, "gemini-3.1-flash-image-preview");
+    assert.equal(batchPlaceCalls[0].options.persistGeneratedImages, true);
+    assert.equal(logs.some(line => line.includes("Batch 2/4 failed: provider failed")), true);
+    assert.equal(logs.some(line => line.includes("2/4 succeeded, 2 failed")), true);
+  });
+
+  test("keeps generate disabled until the whole batch completes while progress tracks settled results", async () => {
+    const firstCall = createDeferred();
+    const secondCall = createDeferred();
+    let providerCallCount = 0;
+    const ui = {
+      testCheckbox: { checked: false },
+      promptInput: { value: "batch prompt" },
+      generateButton: { disabled: false, innerText: "Generate" },
+      allowNSFW: { checked: false },
+      temperature: { value: "1.0" },
+      topP: { value: "0.90" },
+      imageToProcess: {},
+      jobCount: { style: { display: "none" }, textContent: "" }
+    };
+
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          selection: {
+            bounds: {
+              left: 0,
+              right: 100,
+              top: 0,
+              bottom: 100,
+              width: 100,
+              height: 100
+            }
+          }
+        }
+      },
+      core: {
+        showAlert: () => {}
+      },
+      ui,
+      state: {
+        selectedModel: "gemini-3.1-flash-image-preview",
+        aspectRatio: "3:4",
+        enableBatchGeneration: true,
+        batchCount: 2,
+        textToImage: false,
+        imageArray: [],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: false,
+        apiKey: { "NanoBananaPro-api-key": "KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: false,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {},
+        async placeBatchToCurrentDocAtSelection() {}
+      },
+      generateWithProvider: async () => {
+        providerCallCount += 1;
+        if (providerCallCount === 1) {
+          return firstCall.promise;
+        }
+        return secondCall.promise;
+      },
+      critiqueWithProvider: async function* () {},
+      logLine: () => {},
+      utils: {
+        pickTier: () => "2K"
+      },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image",
+      nanoBananaModelId: "gemini-3-pro-image-preview"
+    });
+
+    const runPromise = generator.generate();
+    await flushAsyncWork();
+
+    assert.equal(ui.generateButton.disabled, true);
+    assert.equal(providerCallCount, 2);
+    assert.equal(ui.generateButton.innerText, "Generating 0/2...");
+    assert.equal(ui.jobCount.textContent, "Batch Progress: 0/2");
+
+    secondCall.resolve("generated-b64-2");
+    await flushAsyncWork();
+
+    assert.equal(ui.generateButton.disabled, true);
+    assert.equal(ui.generateButton.innerText, "Generating 1/2...");
+    assert.equal(ui.jobCount.textContent, "Batch Progress: 1/2");
+
+    firstCall.resolve("generated-b64-1");
+    await runPromise;
+
+    assert.equal(ui.generateButton.disabled, false);
+    assert.equal(ui.generateButton.innerText, "Generate");
+    assert.equal(ui.jobCount.style.display, "none");
+    assert.equal(ui.jobCount.textContent, "");
+  });
+
+  test("forces single-request behavior when batch generation is disabled", async () => {
+    let providerCallCount = 0;
+    const singlePlaceCalls = [];
+    const batchPlaceCalls = [];
+
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          selection: {
+            bounds: {
+              left: 0,
+              right: 100,
+              top: 0,
+              bottom: 100,
+              width: 100,
+              height: 100
+            }
+          }
+        }
+      },
+      core: {
+        showAlert: () => {}
+      },
+      ui: {
+        testCheckbox: { checked: false },
+        promptInput: { value: "batch prompt" },
+        generateButton: { disabled: false, innerText: "Generate" },
+        allowNSFW: { checked: false },
+        temperature: { value: "1.0" },
+        topP: { value: "0.90" },
+        imageToProcess: {},
+        jobCount: { style: { display: "none" }, textContent: "" }
+      },
+      state: {
+        selectedModel: "gemini-3.1-flash-image-preview",
+        aspectRatio: "3:4",
+        enableBatchGeneration: false,
+        batchCount: 4,
+        textToImage: false,
+        imageArray: [],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: false,
+        apiKey: { "NanoBananaPro-api-key": "KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: false,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection(...args) {
+          singlePlaceCalls.push(args);
+        },
+        async placeBatchToCurrentDocAtSelection(...args) {
+          batchPlaceCalls.push(args);
+        }
+      },
+      generateWithProvider: async () => {
+        providerCallCount += 1;
+        return "generated-b64";
+      },
+      critiqueWithProvider: async function* () {},
+      logLine: () => {},
+      utils: {
+        pickTier: () => "2K"
+      },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image",
+      nanoBananaModelId: "gemini-3-pro-image-preview"
+    });
+
+    await generator.generate();
+
+    assert.equal(providerCallCount, 1);
+    assert.equal(singlePlaceCalls.length, 1);
+    assert.equal(batchPlaceCalls.length, 0);
   });
 
   test("keeps the originally selected model when state changes mid-request", async () => {
@@ -238,14 +661,14 @@ test.describe("createGenerator", () => {
     const pendingSelection = createDeferred();
 
     const state = {
-      selectedModel: "model-a",
+      selectedModel: "gemini-3-pro-image-preview",
       aspectRatio: "default",
       textToImage: false,
       imageArray: ["ref-a"],
       skipMask: false,
       persistGeneratedImages: true,
       showModelParameters: false,
-      apiKey: { key: "a" },
+      apiKey: { "NanoBananaPro-api-key": "AIza_TEST_KEY" },
       resolution: "2K",
       adaptiveResolutionSetting: false,
       currentJobCount: 0
@@ -307,15 +730,15 @@ test.describe("createGenerator", () => {
     const runPromise = generator.generate();
     await Promise.resolve();
 
-    state.selectedModel = "model-b";
+    state.selectedModel = "grok-imagine-image";
 
     pendingSelection.resolve();
     await runPromise;
 
-    assert.equal(providerCall.modelId, "model-a");
-    assert.equal(placeCalls[0][2], "model-a");
+    assert.equal(providerCall.modelId, "gemini-3-pro-image-preview");
+    assert.equal(placeCalls[0][2], "gemini-3-pro-image-preview");
     assert.equal(placeCalls[0][3].persistGeneratedImages, true);
-    assert.equal(logs.some(line => line.includes("Job finished") && line.includes("model-a")), true);
+    assert.equal(logs.some(line => line.includes("Job finished") && line.includes("gemini-3-pro-image-preview")), true);
   });
 
   test("critique uses selection bounds when selection exists", async () => {

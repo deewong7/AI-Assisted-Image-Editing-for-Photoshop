@@ -154,6 +154,17 @@
         <sp-br></sp-br>
 
         <div id="generateBtnDiv">
+          <sp-div id="batchCountControl" style="display: none;">
+            <sp-label for="batchCountPicker">Batch Count</sp-label>
+            <sp-picker placeholder="Choose batch count..." style="width: 219px;">
+              <sp-menu id="batchCountPicker" slot="options">
+                <sp-menu-item value="1" selected>1</sp-menu-item>
+                <sp-menu-item value="2">2</sp-menu-item>
+                <sp-menu-item value="3">3</sp-menu-item>
+                <sp-menu-item value="4">4</sp-menu-item>
+              </sp-menu>
+            </sp-picker>
+          </sp-div>
           <!-- <sp-button class="shortBtn" variant="secondary" id="loadPrompt">Load</sp-button> -->
           <sp-button class="shortBtn" id="generate">Generate</sp-button>
         </div>
@@ -261,6 +272,9 @@
         <sp-checkbox id="persistGeneratedImages">Save Generated Images Persistently</sp-checkbox>
         <br>
 
+        <sp-checkbox id="enableBatchGeneration">Enable Batch Generate</sp-checkbox>
+        <br>
+
         <sp-checkbox id="enableCritiquePromptEdit">Enable Critique Prompt Edit</sp-checkbox>
         <br>
 
@@ -325,7 +339,7 @@
       <sp-heading size="xs">Copyright</sp-heading>
       <sp-label>
         AI-assisted image editing for Photoshop<br>
-        Version 0.2.4-alpha<br>
+        Version 0.2.5-alpha<br>
 
         © 2026 dw<br>
         License: GPL-3.0<br>

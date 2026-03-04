@@ -10,6 +10,8 @@ function getUI() {
     aspectRatioPicker: document.getElementById("aspectRatioPicker"),
     ratioPicker: document.getElementById("ratioPicker"),
     promptInput: document.getElementById("promptInput"),
+    batchCountControl: document.getElementById("batchCountControl"),
+    batchCountPicker: document.getElementById("batchCountPicker"),
     jobCount: document.getElementById("jobCount"),
     promptPicker: document.getElementById("promptPicker"),
     promptPresetTextarea: document.getElementById("promptPresetTextarea"),
@@ -50,6 +52,7 @@ function getUI() {
     allowNSFW: document.getElementById("allowNSFW"),
     previewImageCheckbox: document.getElementById("previewImage"),
     persistGeneratedImages: document.getElementById("persistGeneratedImages"),
+    enableBatchGeneration: document.getElementById("enableBatchGeneration"),
     enableCritiquePromptEdit: document.getElementById("enableCritiquePromptEdit"),
     openImageFolderButton: document.getElementById("openImageFolder"),
     adaptiveRatioSetting: document.getElementById("adaptiveRatioSetting"),
@@ -249,6 +252,19 @@ function renderJobCount(ui, count) {
   }
 }
 
+function renderBatchProgress(ui, completed, total) {
+  if (!ui.jobCount) return;
+  if (!Number.isFinite(total) || total <= 1) {
+    ui.jobCount.style.display = "none";
+    ui.jobCount.textContent = "";
+    return;
+  }
+
+  const safeCompleted = Math.min(total, Math.max(0, Number(completed) || 0));
+  ui.jobCount.style.display = "";
+  ui.jobCount.textContent = `Batch Progress: ${safeCompleted}/${total}`;
+}
+
 module.exports = {
   getUI,
   renderModelUI,
@@ -259,5 +275,6 @@ module.exports = {
   clearChatImagePreview,
   appendReferencePreview,
   clearReferencePreview,
-  renderJobCount
+  renderJobCount,
+  renderBatchProgress
 };

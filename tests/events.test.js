@@ -17,13 +17,38 @@ function createCheckbox(initialChecked = false) {
   };
 }
 
+function createSelect(initialValue = "1") {
+  const listeners = {};
+  const items = ["1", "2", "3", "4"].map(value => ({
+    value,
+    selected: value === initialValue
+  }));
+  return {
+    value: initialValue,
+    addEventListener(type, handler) {
+      listeners[type] = handler;
+    },
+    querySelectorAll(selector) {
+      return selector === "sp-menu-item" ? items : [];
+    },
+    change(nextValue) {
+      this.value = nextValue;
+      if (typeof listeners.change === "function") {
+        listeners.change({ target: this });
+      }
+    }
+  };
+}
+
 function createBaseArgs(ui, defaultChatPromptText = "DEFAULT CHAT PROMPT") {
   return {
     ui,
     state: {
       apiKey: {},
       promptPresets: {},
-      persistGeneratedImages: false
+      persistGeneratedImages: false,
+      enableBatchGeneration: false,
+      batchCount: 1
     },
     models: {},
     logger: {
@@ -142,7 +167,64 @@ test.describe("generated image persistence preference", () => {
     ui.persistGeneratedImages.click();
 
     assert.equal(args.state.persistGeneratedImages, true);
-    assert.deepEqual(savedPrefs, [{ persistGeneratedImages: true }]);
+    assert.deepEqual(savedPrefs, [{
+      persistGeneratedImages: true,
+      enableBatchGeneration: false
+    }]);
+  });
+});
+
+test.describe("batch generation preference", () => {
+  test("initializeUI reflects saved enableBatchGeneration state", () => {
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      enableBatchGeneration: createCheckbox(false),
+      batchCountControl: { style: { display: "none" } },
+      batchCountPicker: createSelect("3")
+    };
+    const args = createBaseArgs(ui);
+    args.state.enableBatchGeneration = true;
+    args.state.batchCount = 3;
+
+    initializeUI(args);
+
+    assert.equal(ui.enableBatchGeneration.checked, true);
+    assert.equal(ui.batchCountControl.style.display, "");
+    assert.equal(ui.batchCountPicker.value, "3");
+  });
+
+  test("disabling batch generation hides the control, resets batch count, and saves preference", () => {
+    const savedPrefs = [];
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      enableBatchGeneration: createCheckbox(true),
+      batchCountControl: { style: { display: "" } },
+      batchCountPicker: createSelect("4")
+    };
+    const args = createBaseArgs(ui);
+    args.state.enableBatchGeneration = true;
+    args.state.batchCount = 4;
+    args.storage.savePluginPrefs = (_storage, prefs) => {
+      savedPrefs.push(prefs);
+    };
+    global.localStorage = {};
+
+    initializeUI(args);
+    bindEvents(args);
+
+    ui.enableBatchGeneration.checked = false;
+    ui.enableBatchGeneration.click();
+
+    assert.equal(args.state.enableBatchGeneration, false);
+    assert.equal(args.state.batchCount, 1);
+    assert.equal(ui.batchCountControl.style.display, "none");
+    assert.equal(ui.batchCountPicker.value, "1");
+    assert.deepEqual(savedPrefs, [{
+      persistGeneratedImages: false,
+      enableBatchGeneration: false
+    }]);
   });
 });
 
@@ -197,5 +279,29 @@ test.describe("open image folder button", () => {
     assert.equal(alerts.length, 1);
     assert.equal(alerts[0], "Failed to open image folder. Check log for details.");
     assert.equal(logs.some(line => line.includes("Failed to open image folder:")), true);
+  });
+});
+
+test.describe("batch count selection", () => {
+  test("changing batch count updates state", () => {
+    const logs = [];
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      enableBatchGeneration: createCheckbox(true),
+      batchCountControl: { style: { display: "" } },
+      batchCountPicker: createSelect("1")
+    };
+    const args = createBaseArgs(ui);
+    args.state.enableBatchGeneration = true;
+    args.state.batchCount = 1;
+    args.logger.logLine = (...parts) => logs.push(parts.join(" "));
+
+    bindEvents(args);
+
+    ui.batchCountPicker.change("4");
+
+    assert.equal(args.state.batchCount, 4);
+    assert.equal(logs.some(line => line.includes("Update batch count to: 4")), true);
   });
 });

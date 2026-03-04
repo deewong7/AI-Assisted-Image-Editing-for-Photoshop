@@ -139,7 +139,7 @@ test.describe("loadPromptPresetsFromStorage", () => {
 test.describe("loadPluginPrefsFromStorage", () => {
   test("returns defaults when missing", () => {
     const storage = createStorage();
-    const defaults = { persistGeneratedImages: false };
+    const defaults = { persistGeneratedImages: false, enableBatchGeneration: false };
     assert.deepEqual(utils.loadPluginPrefsFromStorage(storage, defaults), defaults);
   });
 
@@ -147,9 +147,10 @@ test.describe("loadPluginPrefsFromStorage", () => {
     const storage = createStorage({
       pluginPrefs: JSON.stringify({ persistGeneratedImages: true })
     });
-    const defaults = { persistGeneratedImages: false };
+    const defaults = { persistGeneratedImages: false, enableBatchGeneration: false };
     assert.deepEqual(utils.loadPluginPrefsFromStorage(storage, defaults), {
-      persistGeneratedImages: true
+      persistGeneratedImages: true,
+      enableBatchGeneration: false
     });
   });
 
@@ -157,7 +158,7 @@ test.describe("loadPluginPrefsFromStorage", () => {
     const storage = createStorage({
       pluginPrefs: "{invalid"
     });
-    const defaults = { persistGeneratedImages: false };
+    const defaults = { persistGeneratedImages: false, enableBatchGeneration: false };
     assert.deepEqual(utils.loadPluginPrefsFromStorage(storage, defaults), defaults);
   });
 });
@@ -165,7 +166,13 @@ test.describe("loadPluginPrefsFromStorage", () => {
 test.describe("savePluginPrefsToStorage", () => {
   test("stores plugin preferences under pluginPrefs key", () => {
     const storage = createStorage();
-    utils.savePluginPrefsToStorage(storage, { persistGeneratedImages: true });
-    assert.equal(storage._store.pluginPrefs, JSON.stringify({ persistGeneratedImages: true }));
+    utils.savePluginPrefsToStorage(storage, {
+      persistGeneratedImages: true,
+      enableBatchGeneration: false
+    });
+    assert.equal(storage._store.pluginPrefs, JSON.stringify({
+      persistGeneratedImages: true,
+      enableBatchGeneration: false
+    }));
   });
 });

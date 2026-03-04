@@ -64,6 +64,78 @@ function createPlacerForTest(fs) {
   });
 }
 
+function createPlacementHarness() {
+  const { fs, calls } = createFsHarness();
+  const groupCalls = [];
+  let nextLayerId = 2;
+
+  const backgroundLayer = {
+    id: 1,
+    name: "Background",
+    bounds: { width: 100, height: 100 },
+    scale() {},
+    move() {}
+  };
+
+  const activeDocument = {
+    width: 100,
+    height: 100,
+    layers: [backgroundLayer],
+    activeLayers: [backgroundLayer],
+    async createLayerGroup({ name, fromLayers }) {
+      groupCalls.push({ name, fromLayers });
+      return { id: nextLayerId++, name };
+    }
+  };
+
+  const app = {
+    activeDocument,
+    async batchPlay() {
+      const placedLayer = {
+        id: nextLayerId++,
+        name: "Placed Layer",
+        bounds: { width: 100, height: 100 },
+        scale() {},
+        move() {}
+      };
+      activeDocument.layers.unshift(placedLayer);
+      activeDocument.activeLayers = [placedLayer];
+      return [];
+    }
+  };
+
+  const placer = createPlacer({
+    app,
+    core: {
+      async executeAsModal(callback) {
+        return callback();
+      }
+    },
+    constants: {
+      ElementPlacement: {
+        PLACEBEFORE: "PLACEBEFORE"
+      }
+    },
+    fs,
+    imaging: {
+      async createImageDataFromBuffer() {
+        return {
+          dispose() {}
+        };
+      },
+      async putLayerMask() {}
+    },
+    base64ToArrayBuffer: decodeBase64,
+    logLine: () => {}
+  });
+
+  return {
+    placer,
+    calls,
+    groupCalls
+  };
+}
+
 test.describe("createPlacer output folder selection", () => {
   const bounds = {
     left: 0,
@@ -102,5 +174,32 @@ test.describe("createPlacer output folder selection", () => {
     assert.equal(calls.writes.length, 1);
     assert.equal(calls.writes[0].kind, "data");
     assert.equal(calls.writes[0].byteLength, 3);
+  });
+
+  test("batch placement writes each image and groups the generated layers", async () => {
+    const { placer, calls, groupCalls } = createPlacementHarness();
+
+    await placer.placeBatchToCurrentDocAtSelection(["QUJD", "REVG"], bounds, "model", {
+      persistGeneratedImages: false,
+      skipMask: true
+    });
+
+    assert.equal(calls.tempFolderCalls, 2);
+    assert.equal(calls.dataFolderCalls, 0);
+    assert.equal(calls.writes.length, 2);
+    assert.equal(groupCalls.length, 1);
+    assert.equal(groupCalls[0].name, "Generated Batch - model");
+    assert.deepEqual(groupCalls[0].fromLayers.map(layer => layer.id), [2, 3]);
+  });
+
+  test("batch placement skips group creation when only one image is placed", async () => {
+    const { placer, groupCalls } = createPlacementHarness();
+
+    await placer.placeBatchToCurrentDocAtSelection(["QUJD"], bounds, "model", {
+      persistGeneratedImages: true,
+      skipMask: true
+    });
+
+    assert.equal(groupCalls.length, 0);
   });
 });

@@ -92,6 +92,13 @@ textarea {
   align-items: flex-start;
 }
 
+#generateBtnDiv {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 219px;
+}
+
 .right {
   display: flex;
   /* width: 220px; */
