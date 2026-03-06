@@ -40,6 +40,16 @@ function createSelect(initialValue = "1") {
   };
 }
 
+function createMenuButton(page, initialStyle = {}) {
+  return {
+    dataset: { page },
+    style: {
+      display: initialStyle.display ?? "",
+      textDecoration: initialStyle.textDecoration ?? "none"
+    }
+  };
+}
+
 function createBaseArgs(ui, defaultChatPromptText = "DEFAULT CHAT PROMPT") {
   return {
     ui,
@@ -48,6 +58,7 @@ function createBaseArgs(ui, defaultChatPromptText = "DEFAULT CHAT PROMPT") {
       promptPresets: {},
       persistGeneratedImages: false,
       enableBatchGeneration: false,
+      showChatTab: true,
       batchCount: 1
     },
     models: {},
@@ -169,7 +180,8 @@ test.describe("generated image persistence preference", () => {
     assert.equal(args.state.persistGeneratedImages, true);
     assert.deepEqual(savedPrefs, [{
       persistGeneratedImages: true,
-      enableBatchGeneration: false
+      enableBatchGeneration: false,
+      showChatTab: true
     }]);
   });
 });
@@ -223,7 +235,71 @@ test.describe("batch generation preference", () => {
     assert.equal(ui.batchCountPicker.value, "1");
     assert.deepEqual(savedPrefs, [{
       persistGeneratedImages: false,
-      enableBatchGeneration: false
+      enableBatchGeneration: false,
+      showChatTab: true
+    }]);
+  });
+});
+
+test.describe("chat tab preference", () => {
+  test("initializeUI reflects saved showChatTab state and hides chat tab menu item", () => {
+    const mainMenu = createMenuButton("main");
+    const chatMenu = createMenuButton("chat");
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      showChatTabCheckbox: createCheckbox(true),
+      menuItems: [mainMenu, chatMenu],
+      pages: [
+        { id: "main", hidden: false },
+        { id: "chat", hidden: true }
+      ]
+    };
+    const args = createBaseArgs(ui);
+    args.state.showChatTab = false;
+
+    initializeUI(args);
+
+    assert.equal(ui.showChatTabCheckbox.checked, false);
+    assert.equal(chatMenu.style.display, "none");
+  });
+
+  test("disabling showChatTab hides tab, returns to main page, and saves preference", () => {
+    const savedPrefs = [];
+    const mainMenu = createMenuButton("main");
+    const chatMenu = createMenuButton("chat", { textDecoration: "underline" });
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      showChatTabCheckbox: createCheckbox(true),
+      menuItems: [mainMenu, chatMenu],
+      pages: [
+        { id: "main", hidden: true },
+        { id: "chat", hidden: false }
+      ]
+    };
+    const args = createBaseArgs(ui);
+    args.storage.savePluginPrefs = (_storage, prefs) => {
+      savedPrefs.push(prefs);
+    };
+    global.localStorage = {};
+
+    initializeUI(args);
+    bindEvents(args);
+
+    ui.showChatTabCheckbox.checked = false;
+    ui.showChatTabCheckbox.click();
+
+    assert.equal(args.state.showChatTab, false);
+    assert.equal(chatMenu.style.display, "none");
+    assert.equal(ui.pages[0].hidden, false);
+    assert.equal(ui.pages[1].hidden, true);
+    assert.equal(mainMenu.style.textDecoration, "underline");
+    assert.equal(chatMenu.style.textDecoration, "none");
+    assert.deepEqual(savedPrefs, [{
+      persistGeneratedImages: false,
+      enableBatchGeneration: false,
+      showChatTab: false
     }]);
   });
 });

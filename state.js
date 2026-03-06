@@ -12,7 +12,8 @@ const DEFAULT_API_KEYS = Object.freeze({
 
 const DEFAULT_PLUGIN_PREFS = Object.freeze({
   persistGeneratedImages: false,
-  enableBatchGeneration: false
+  enableBatchGeneration: false,
+  showChatTab: true
 });
 
 const DEFAULT_PROMPT_PRESETS = {
@@ -137,6 +138,7 @@ function createState({ ui, apiKey, promptPresets, pluginPrefs } = {}) {
     enableBatchGeneration: prefs.enableBatchGeneration === true,
     skipMask: false,
     persistGeneratedImages: prefs.persistGeneratedImages === true,
+    showChatTab: prefs.showChatTab !== false,
     textToImage: false,
     currentJobCount: 0,
     apiKey: apiKey || { ...DEFAULT_API_KEYS },

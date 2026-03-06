@@ -80,10 +80,65 @@ function applyBatchGenerationState(ui, state) {
   }
 }
 
+function getMenuPage(menuItem) {
+  if (!menuItem) return "";
+  if (menuItem.dataset?.page) {
+    return menuItem.dataset.page;
+  }
+  if (typeof menuItem.getAttribute === "function") {
+    return menuItem.getAttribute("data-page") || "";
+  }
+  return "";
+}
+
+function showPage(ui, pageId) {
+  const pages = Array.from(ui.pages || []);
+  pages.forEach(page => {
+    if (page) {
+      page.hidden = page.id !== pageId;
+    }
+  });
+
+  const menuItems = Array.from(ui.menuItems || []);
+  menuItems.forEach(menuItem => {
+    if (menuItem?.style) {
+      menuItem.style.textDecoration = getMenuPage(menuItem) === pageId ? "underline" : "none";
+    }
+  });
+}
+
+function applyChatTabVisibility(ui, state) {
+  const enabled = state.showChatTab !== false;
+  if (ui.showChatTabCheckbox) {
+    ui.showChatTabCheckbox.checked = enabled;
+  }
+
+  const menuItems = Array.from(ui.menuItems || []);
+  const chatMenuItem = menuItems.find(menuItem => getMenuPage(menuItem) === "chat");
+  if (chatMenuItem?.style) {
+    chatMenuItem.style.display = enabled ? "" : "none";
+  }
+
+  const pages = Array.from(ui.pages || []);
+  const chatPage = pages.find(page => page?.id === "chat");
+  const wasChatActive = chatPage?.hidden !== true;
+
+  if (!enabled) {
+    if (chatPage) {
+      chatPage.hidden = true;
+    }
+
+    if (wasChatActive) {
+      showPage(ui, "main");
+    }
+  }
+}
+
 function savePluginPrefsState(storage, state) {
   storage.savePluginPrefs(localStorage, {
     persistGeneratedImages: state.persistGeneratedImages === true,
-    enableBatchGeneration: state.enableBatchGeneration === true
+    enableBatchGeneration: state.enableBatchGeneration === true,
+    showChatTab: state.showChatTab !== false
   });
 }
 
@@ -101,6 +156,7 @@ function initializeUI({ ui, state, models, logger, storage, defaultChatPromptTex
     ui.persistGeneratedImages.checked = state.persistGeneratedImages === true;
   }
   applyBatchGenerationState(ui, state);
+  applyChatTabVisibility(ui, state);
   applyCritiquePromptEditState(ui, defaultChatPromptText);
 }
 
@@ -159,13 +215,10 @@ function bindEvents({
       const btn = e.target.closest("sp-action-button");
       if (!btn) return;
 
-      ui.pages.forEach(p => {
-        p.hidden = p.id !== btn.dataset.page;
-      });
-
-      ui.menuItems.forEach(m => {
-        m.style.textDecoration = m === btn ? "underline" : "none";
-      });
+      const pageId = getMenuPage(btn);
+      if (!pageId) return;
+      if (pageId === "chat" && state.showChatTab === false) return;
+      showPage(ui, pageId);
     });
   }
 
@@ -398,6 +451,14 @@ function bindEvents({
     ui.enableBatchGeneration.addEventListener("click", (e) => {
       state.enableBatchGeneration = e.target.checked;
       applyBatchGenerationState(ui, state);
+      savePluginPrefsState(storage, state);
+    });
+  }
+
+  if (ui.showChatTabCheckbox) {
+    ui.showChatTabCheckbox.addEventListener("click", (e) => {
+      state.showChatTab = e.target.checked;
+      applyChatTabVisibility(ui, state);
       savePluginPrefsState(storage, state);
     });
   }

@@ -139,7 +139,7 @@ test.describe("loadPromptPresetsFromStorage", () => {
 test.describe("loadPluginPrefsFromStorage", () => {
   test("returns defaults when missing", () => {
     const storage = createStorage();
-    const defaults = { persistGeneratedImages: false, enableBatchGeneration: false };
+    const defaults = { persistGeneratedImages: false, enableBatchGeneration: false, showChatTab: true };
     assert.deepEqual(utils.loadPluginPrefsFromStorage(storage, defaults), defaults);
   });
 
@@ -147,10 +147,11 @@ test.describe("loadPluginPrefsFromStorage", () => {
     const storage = createStorage({
       pluginPrefs: JSON.stringify({ persistGeneratedImages: true })
     });
-    const defaults = { persistGeneratedImages: false, enableBatchGeneration: false };
+    const defaults = { persistGeneratedImages: false, enableBatchGeneration: false, showChatTab: true };
     assert.deepEqual(utils.loadPluginPrefsFromStorage(storage, defaults), {
       persistGeneratedImages: true,
-      enableBatchGeneration: false
+      enableBatchGeneration: false,
+      showChatTab: true
     });
   });
 
@@ -158,7 +159,7 @@ test.describe("loadPluginPrefsFromStorage", () => {
     const storage = createStorage({
       pluginPrefs: "{invalid"
     });
-    const defaults = { persistGeneratedImages: false, enableBatchGeneration: false };
+    const defaults = { persistGeneratedImages: false, enableBatchGeneration: false, showChatTab: true };
     assert.deepEqual(utils.loadPluginPrefsFromStorage(storage, defaults), defaults);
   });
 });
@@ -168,11 +169,13 @@ test.describe("savePluginPrefsToStorage", () => {
     const storage = createStorage();
     utils.savePluginPrefsToStorage(storage, {
       persistGeneratedImages: true,
-      enableBatchGeneration: false
+      enableBatchGeneration: false,
+      showChatTab: false
     });
     assert.equal(storage._store.pluginPrefs, JSON.stringify({
       persistGeneratedImages: true,
-      enableBatchGeneration: false
+      enableBatchGeneration: false,
+      showChatTab: false
     }));
   });
 });
