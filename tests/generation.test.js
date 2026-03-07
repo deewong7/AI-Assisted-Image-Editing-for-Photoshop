@@ -572,6 +572,120 @@ test.describe("createGenerator", () => {
     assert.equal(ui.jobCount.textContent, "");
   });
 
+  test("turns generate button into cancel after timeout and aborts unfinished requests on cancel click", async () => {
+    const batchPlaceCalls = [];
+    let timeoutHandler;
+    let providerCallCount = 0;
+    const ui = {
+      testCheckbox: { checked: false },
+      promptInput: { value: "batch prompt" },
+      generateButton: { disabled: false, innerText: "Generate", style: { backgroundColor: "" } },
+      allowNSFW: { checked: false },
+      temperature: { value: "1.0" },
+      topP: { value: "0.90" },
+      imageToProcess: {},
+      jobCount: { style: { display: "none" }, textContent: "" }
+    };
+
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          selection: {
+            bounds: {
+              left: 0,
+              right: 100,
+              top: 0,
+              bottom: 100,
+              width: 100,
+              height: 100
+            }
+          }
+        }
+      },
+      core: {
+        showAlert: () => {}
+      },
+      ui,
+      state: {
+        selectedModel: "gemini-3.1-flash-image-preview",
+        aspectRatio: "3:4",
+        enableBatchGeneration: true,
+        batchCount: 3,
+        textToImage: false,
+        imageArray: [],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: false,
+        apiKey: { "NanoBananaPro-api-key": "KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: false,
+        maxWaitingTimeSeconds: 120,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {},
+        async placeBatchToCurrentDocAtSelection(images) {
+          batchPlaceCalls.push(images);
+        }
+      },
+      generateWithProvider: async (_modelId, options) => {
+        const callIndex = providerCallCount;
+        providerCallCount += 1;
+        if (callIndex === 0) {
+          return "generated-b64-1";
+        }
+        return new Promise((_, reject) => {
+          if (options.signal?.aborted) {
+            const abortedError = new Error("aborted");
+            abortedError.name = "AbortError";
+            reject(abortedError);
+            return;
+          }
+          options.signal?.addEventListener("abort", () => {
+            const abortedError = new Error("aborted");
+            abortedError.name = "AbortError";
+            reject(abortedError);
+          }, { once: true });
+        });
+      },
+      critiqueWithProvider: async function* () {},
+      logLine: () => {},
+      utils: {
+        pickTier: () => "2K"
+      },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image",
+      nanoBananaModelId: "gemini-3-pro-image-preview",
+      setTimeoutImpl: (callback) => {
+        timeoutHandler = callback;
+        return 1;
+      },
+      clearTimeoutImpl: () => {}
+    });
+
+    const runPromise = generator.generate();
+    await flushAsyncWork();
+
+    assert.equal(ui.generateButton.disabled, true);
+    timeoutHandler();
+    assert.equal(ui.generateButton.disabled, false);
+    assert.equal(ui.generateButton.innerText, "Cancel");
+    assert.equal(ui.generateButton.style.backgroundColor, "#d93025");
+
+    generator.handleGenerateClick();
+    await runPromise;
+
+    assert.equal(batchPlaceCalls.length, 1);
+    assert.deepEqual(batchPlaceCalls[0], ["generated-b64-1"]);
+    assert.equal(ui.generateButton.innerText, "Generate");
+    assert.equal(ui.generateButton.style.backgroundColor, "");
+  });
+
   test("forces single-request behavior when batch generation is disabled", async () => {
     let providerCallCount = 0;
     const singlePlaceCalls = [];

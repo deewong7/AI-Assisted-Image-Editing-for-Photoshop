@@ -14,8 +14,12 @@ function createGenerator({
   seedreamModelId,
   seedream5ModelId,
   grokModelId,
-  nanoBananaModelId
+  nanoBananaModelId,
+  setTimeoutImpl = setTimeout,
+  clearTimeoutImpl = clearTimeout
 }) {
+  let activeGenerateRun = null
+
   function toNumber(value) {
     let parsed = Number(value);
     if (!Number.isFinite(parsed) && value && typeof value === "object") {
@@ -68,18 +72,150 @@ function createGenerator({
     return Math.min(4, Math.max(1, Number(value) || 1))
   }
 
+  function clampMaxWaitingTimeSeconds(value) {
+    return Math.min(300, Math.max(1, Number(value) || 120))
+  }
+
+  function isAbortError(error) {
+    if (!error) return false
+    const message = String(error?.message || "").toLowerCase()
+    return error?.name === "AbortError" ||
+      message.includes("aborted") ||
+      message.includes("abort")
+  }
+
+  function createAbortError() {
+    const error = new Error("Request aborted")
+    error.name = "AbortError"
+    return error
+  }
+
   function setGenerateButtonIdle() {
     if (!ui.generateButton) {
       return
     }
     ui.generateButton.innerText = ui.testCheckbox?.checked ? "TEST" : "Generate"
+    if (ui.generateButton.style) {
+      ui.generateButton.style.backgroundColor = ""
+    }
   }
 
-  function setGenerateButtonProgress(current, total) {
+  function setGenerateButtonProgress(current, total, runState) {
     if (!ui.generateButton) {
       return
     }
+    if (runState?.cancelEnabled) {
+      return
+    }
     ui.generateButton.innerText = total > 1 ? `Generating ${current}/${total}...` : "Generating..."
+    if (ui.generateButton.style) {
+      ui.generateButton.style.backgroundColor = ""
+    }
+  }
+
+  function setGenerateButtonCancel() {
+    if (!ui.generateButton) {
+      return
+    }
+    ui.generateButton.innerText = "Cancel"
+    if (ui.generateButton.style) {
+      ui.generateButton.style.backgroundColor = "#d93025"
+    }
+    ui.generateButton.disabled = false
+  }
+
+  function clearGenerateTimer(runState) {
+    if (!runState) {
+      return
+    }
+    if (runState.timeoutId != null && typeof clearTimeoutImpl === "function") {
+      clearTimeoutImpl(runState.timeoutId)
+    }
+    runState.timeoutId = null
+  }
+
+  function enableCancelMode(runState) {
+    if (!runState || !runState.isRunning || runState.cancelRequested) {
+      return
+    }
+    runState.cancelEnabled = true
+    setGenerateButtonCancel()
+    if (typeof logLine === "function") {
+      logLine(
+        `Maximum waiting time reached (${runState.maxWaitingTimeSeconds}s). Click Cancel to abort unfinished requests.`
+      )
+    }
+  }
+
+  function scheduleGenerateTimeout(runState) {
+    if (!runState || typeof setTimeoutImpl !== "function") {
+      return
+    }
+    clearGenerateTimer(runState)
+    runState.timeoutId = setTimeoutImpl(() => {
+      enableCancelMode(runState)
+    }, runState.maxWaitingTimeSeconds * 1000)
+  }
+
+  function createRunController(runState) {
+    if (!runState || typeof AbortController !== "function") {
+      return null
+    }
+    const controller = new AbortController()
+    runState.controllers.add(controller)
+    if (runState.cancelRequested) {
+      try {
+        controller.abort()
+      } catch {
+        // ignore abort errors
+      }
+    }
+    return controller
+  }
+
+  function releaseRunController(runState, controller) {
+    if (!runState || !controller) {
+      return
+    }
+    runState.controllers.delete(controller)
+  }
+
+  function requestCancelGenerateRun(runState) {
+    if (!runState || !runState.isRunning || !runState.cancelEnabled || runState.cancelRequested) {
+      return
+    }
+
+    runState.cancelRequested = true
+    const unfinishedControllers = Array.from(runState.controllers)
+    unfinishedControllers.forEach(controller => {
+      try {
+        controller.abort()
+      } catch {
+        // ignore abort errors during cancellation
+      }
+    })
+
+    if (ui.generateButton) {
+      ui.generateButton.disabled = true
+      ui.generateButton.innerText = "Cancelling..."
+    }
+
+    if (typeof logLine === "function") {
+      logLine(`Cancel requested. Aborted ${unfinishedControllers.length} unfinished request(s).`)
+    }
+  }
+
+  function handleGenerateClick() {
+    if (activeGenerateRun?.isRunning) {
+      requestCancelGenerateRun(activeGenerateRun)
+      return
+    }
+
+    generate().catch(error => {
+      if (typeof logLine === "function") {
+        logLine("Unexpected generate error: " + (error?.message || String(error)))
+      }
+    })
   }
 
   function createFetchLogMessage(targetModel, requestOptions) {
@@ -110,16 +246,28 @@ function createGenerator({
     return `Batch failed after ${elapsedSeconds} seconds - 0/${total} succeeded - ${targetModel}`
   }
 
-  async function generateSingleImage(targetModel, requestOptions, base64Data) {
+  async function generateSingleImage(targetModel, requestOptions, base64Data, signal) {
     if (targetModel === "localtest") {
-      const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+      if (signal?.aborted) {
+        throw createAbortError()
+      }
+      const sleep = ms => new Promise((resolve, reject) => {
+        const timerId = setTimeout(resolve, ms)
+        if (signal) {
+          signal.addEventListener("abort", () => {
+            clearTimeout(timerId)
+            reject(createAbortError())
+          }, { once: true })
+        }
+      })
       await sleep(3000)
       return base64Data
     }
 
     return generateWithProvider(targetModel, {
       ...requestOptions,
-      base64Image: base64Data
+      base64Image: base64Data,
+      signal
     })
   }
 
@@ -131,10 +279,18 @@ function createGenerator({
     }
   }
 
-  function createBatchTask(targetModel, requestOptions, base64Data, batchNumber, totalBatchCount, onSettled) {
+  function createBatchTask(targetModel, requestOptions, base64Data, batchNumber, totalBatchCount, onSettled, runState) {
+    const controller = createRunController(runState)
+    const signal = controller?.signal
+
     return Promise.resolve()
       .then(async () => {
-        const generatedBase64 = await generateSingleImage(targetModel, cloneRequestOptions(requestOptions), base64Data)
+        const generatedBase64 = await generateSingleImage(
+          targetModel,
+          cloneRequestOptions(requestOptions),
+          base64Data,
+          signal
+        )
         if (!generatedBase64 || generatedBase64.length === 0) {
           throw new Error("no image data returned")
         }
@@ -148,14 +304,20 @@ function createGenerator({
         }
       })
       .catch(error => {
-        const message = `Batch ${batchNumber}/${totalBatchCount} failed: ${error?.message || String(error)}`
-        console.error("Error during remote API call: " + error)
+        const cancelled = isAbortError(error)
+        const message = cancelled
+          ? `Batch ${batchNumber}/${totalBatchCount} canceled`
+          : `Batch ${batchNumber}/${totalBatchCount} failed: ${error?.message || String(error)}`
+        if (!cancelled) {
+          console.error("Error during remote API call: " + error)
+        }
         if (typeof logLine === "function") {
           logLine(message)
         }
         throw error
       })
       .finally(() => {
+        releaseRunController(runState, controller)
         if (typeof onSettled === "function") {
           onSettled()
         }
@@ -163,6 +325,10 @@ function createGenerator({
   }
 
   async function generate() {
+    if (activeGenerateRun?.isRunning) {
+      return
+    }
+
     const selectionData = app.activeDocument.selection
     if (!selectionData?.bounds) {
       core.showAlert("No Selection.")
@@ -198,6 +364,7 @@ function createGenerator({
     state.temperature = Number.isFinite(temperatureInput) ? temperatureInput : 1.0
     state.topP = Number.isFinite(topPInput) ? topPInput : 0.90
     state.batchCount = targetBatchCount
+    state.maxWaitingTimeSeconds = clampMaxWaitingTimeSeconds(state.maxWaitingTimeSeconds)
 
     const requestOptions = {
       prompt,
@@ -231,11 +398,21 @@ function createGenerator({
     let generatedImages = []
     let jobCountIncremented = false
     const jobStartMs = Date.now()
+    const runState = {
+      isRunning: true,
+      cancelEnabled: false,
+      cancelRequested: false,
+      timeoutId: null,
+      controllers: new Set(),
+      maxWaitingTimeSeconds: state.maxWaitingTimeSeconds
+    }
+    activeGenerateRun = runState
 
     try {
       if (ui.generateButton) {
         ui.generateButton.disabled = true
       }
+      scheduleGenerateTimeout(runState)
 
       state.currentJobCount = Math.max(0, (state.currentJobCount || 0) + 1)
       if (targetBatchCount > 1) {
@@ -271,12 +448,12 @@ function createGenerator({
 
       if (targetBatchCount > 1) {
         let completedCount = 0
-        setGenerateButtonProgress(0, targetBatchCount)
+        setGenerateButtonProgress(0, targetBatchCount, runState)
         renderBatchProgress(ui, 0, targetBatchCount)
 
         const handleTaskSettled = () => {
           completedCount += 1
-          setGenerateButtonProgress(completedCount, targetBatchCount)
+          setGenerateButtonProgress(completedCount, targetBatchCount, runState)
           renderBatchProgress(ui, completedCount, targetBatchCount)
         }
 
@@ -294,7 +471,8 @@ function createGenerator({
               base64Data,
               batchNumber,
               targetBatchCount,
-              handleTaskSettled
+              handleTaskSettled,
+              runState
             )
           )
         }
@@ -304,14 +482,20 @@ function createGenerator({
           .filter(result => result.status === "fulfilled" && result.value?.generatedBase64)
           .map(result => result.value.generatedBase64)
       } else {
-        setGenerateButtonProgress(1, targetBatchCount)
+        setGenerateButtonProgress(1, targetBatchCount, runState)
         if (typeof logLine === "function") {
           logLine("Batch 1/1 started")
           logLine(createFetchLogMessage(targetModel, requestOptions))
         }
 
+        const controller = createRunController(runState)
         try {
-          const generatedBase64 = await generateSingleImage(targetModel, cloneRequestOptions(requestOptions), base64Data)
+          const generatedBase64 = await generateSingleImage(
+            targetModel,
+            cloneRequestOptions(requestOptions),
+            base64Data,
+            controller?.signal
+          )
           if (!generatedBase64 || generatedBase64.length === 0) {
             const message = "Batch 1/1 failed: no image data returned"
             console.log(message)
@@ -325,11 +509,18 @@ function createGenerator({
             }
           }
         } catch (error) {
-          const message = `Batch 1/1 failed: ${error?.message || String(error)}`
-          console.error("Error during remote API call: " + error)
+          const cancelled = isAbortError(error)
+          const message = cancelled
+            ? "Batch 1/1 canceled"
+            : `Batch 1/1 failed: ${error?.message || String(error)}`
+          if (!cancelled) {
+            console.error("Error during remote API call: " + error)
+          }
           if (typeof logLine === "function") {
             logLine(message)
           }
+        } finally {
+          releaseRunController(runState, controller)
         }
       }
 
@@ -366,6 +557,12 @@ function createGenerator({
         logLine("Error placing generated image to document: " + error)
       }
     } finally {
+      clearGenerateTimer(runState)
+      runState.isRunning = false
+      if (activeGenerateRun === runState) {
+        activeGenerateRun = null
+      }
+
       const elapsedSeconds = Math.round((Date.now() - jobStartMs) / 1000)
       if (jobCountIncremented) {
         state.currentJobCount = Math.max(0, (state.currentJobCount || 0) - 1)
@@ -476,6 +673,7 @@ function createGenerator({
   }
 
   return {
+    handleGenerateClick,
     generate,
     critique
   };

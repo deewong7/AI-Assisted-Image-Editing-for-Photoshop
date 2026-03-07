@@ -57,6 +57,31 @@ test.describe("generateImage (bytedance)", () => {
     ]);
   });
 
+  test("passes AbortSignal to fetch", async (t) => {
+    const originalFetch = global.fetch;
+    let lastCall;
+    global.fetch = async (url, options) => {
+      lastCall = { url, options };
+      return {
+        ok: true,
+        json: async () => ({ data: [{ b64_json: "result" }] })
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    const controller = new AbortController();
+    await generateImage({
+      prompt: "hello",
+      base64Image: "BASE",
+      apiKey: { "SeeDream-api-key": "k" },
+      signal: controller.signal
+    });
+
+    assert.equal(lastCall.options.signal, controller.signal);
+  });
+
   test("clips SeeDream 5.0 resolution to 3K", async (t) => {
     const originalFetch = global.fetch;
     let lastCall;

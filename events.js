@@ -80,6 +80,10 @@ function applyBatchGenerationState(ui, state) {
   }
 }
 
+function normalizeMaxWaitingTimeSeconds(value) {
+  return Math.min(300, Math.max(1, Number(value) || 120));
+}
+
 function getMenuPage(menuItem) {
   if (!menuItem) return "";
   if (menuItem.dataset?.page) {
@@ -138,7 +142,8 @@ function savePluginPrefsState(storage, state) {
   storage.savePluginPrefs(localStorage, {
     persistGeneratedImages: state.persistGeneratedImages === true,
     enableBatchGeneration: state.enableBatchGeneration === true,
-    showChatTab: state.showChatTab !== false
+    showChatTab: state.showChatTab !== false,
+    maxWaitingTimeSeconds: normalizeMaxWaitingTimeSeconds(state.maxWaitingTimeSeconds)
   });
 }
 
@@ -154,6 +159,10 @@ function initializeUI({ ui, state, models, logger, storage, defaultChatPromptTex
   }
   if (ui.persistGeneratedImages) {
     ui.persistGeneratedImages.checked = state.persistGeneratedImages === true;
+  }
+  state.maxWaitingTimeSeconds = normalizeMaxWaitingTimeSeconds(state.maxWaitingTimeSeconds);
+  if (ui.maxWaitingTimeSlider) {
+    ui.maxWaitingTimeSlider.value = String(state.maxWaitingTimeSeconds);
   }
   applyBatchGenerationState(ui, state);
   applyChatTabVisibility(ui, state);
@@ -237,7 +246,10 @@ function bindEvents({
   }
 
   if (ui.generateButton) {
-    ui.generateButton.addEventListener("click", generator.generate);
+    const onGenerateClick = typeof generator.handleGenerateClick === "function"
+      ? generator.handleGenerateClick
+      : generator.generate;
+    ui.generateButton.addEventListener("click", onGenerateClick);
   }
 
   if (ui.openImageFolderButton && typeof openImageFolder === "function") {
@@ -451,6 +463,14 @@ function bindEvents({
     ui.enableBatchGeneration.addEventListener("click", (e) => {
       state.enableBatchGeneration = e.target.checked;
       applyBatchGenerationState(ui, state);
+      savePluginPrefsState(storage, state);
+    });
+  }
+
+  if (ui.maxWaitingTimeSlider) {
+    ui.maxWaitingTimeSlider.addEventListener("change", (e) => {
+      state.maxWaitingTimeSeconds = normalizeMaxWaitingTimeSeconds(e.target?.value);
+      ui.maxWaitingTimeSlider.value = String(state.maxWaitingTimeSeconds);
       savePluginPrefsState(storage, state);
     });
   }

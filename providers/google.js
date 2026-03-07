@@ -187,7 +187,8 @@ async function generateImage(options) {
     topP,
     modelId,
     logLine,
-    textToImage = false
+    textToImage = false,
+    signal
   } = options || {};
 
   if (prompt.length <= 1) {
@@ -266,6 +267,7 @@ async function generateImage(options) {
   try {
     const response = await fetch(url, {
       method: "POST",
+      signal,
       headers: {
         "Content-Type": "application/json",
         ...(useVertexApi ? {} : { "x-goog-api-key": API_KEY })

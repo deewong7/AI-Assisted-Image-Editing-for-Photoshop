@@ -36,7 +36,8 @@ async function generateImage(options) {
     modelId,
     textToImage = false,
     logLine,
-    nsfw
+    nsfw,
+    signal
   } = options || {};
 
   if (prompt.length <= 1) {
@@ -82,6 +83,7 @@ async function generateImage(options) {
   try {
     const res = await fetch(endpoint, {
       method: "POST",
+      signal,
       headers: {
         "Content-Type": "application/json",
         "accept": "application/json",

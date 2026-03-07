@@ -103,6 +103,31 @@ test.describe("generateImage (xai)", () => {
     assert.equal(body.aspect_ratio, undefined);
   });
 
+  test("passes AbortSignal to fetch", async (t) => {
+    const originalFetch = global.fetch;
+    let lastCall;
+    global.fetch = async (url, options) => {
+      lastCall = { url, options };
+      return {
+        ok: true,
+        json: async () => ({ data: [{ b64_json: "EDIT_RESULT" }] })
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    const controller = new AbortController();
+    await generateImage({
+      prompt: "edit it",
+      base64Image: "BASE",
+      apiKey: { "xAI-api-key": "KEY" },
+      signal: controller.signal
+    });
+
+    assert.equal(lastCall.options.signal, controller.signal);
+  });
+
   test("throws on non-ok response", async (t) => {
     const originalFetch = global.fetch;
     global.fetch = async () => ({

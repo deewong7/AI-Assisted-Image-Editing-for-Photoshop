@@ -239,41 +239,39 @@
       <!-- <sp-heading size="S">Developer</sp-heading> -->
       <sp-field-group label="settings">
 
-        <sp-checkbox id="showChatTab" checked>Show Chat Tab</sp-checkbox>
+        <sp-label>Generation</sp-label><br>
+        <sp-slider id="maxWaitingTimeSlider" variant="filled" min="1" max="300" value="120" step="1"
+          style="width: 200px;">
+          <sp-label slot="label">Maximum Waiting Time (s)</sp-label>
+        </sp-slider>
+        <br>
+        <sp-checkbox id="enableBatchGeneration">Enable Batch Generate</sp-checkbox><br>
+        <sp-checkbox id="enableTextToImage">Enable Text to Image Generation</sp-checkbox><br>
+        <sp-checkbox id="referenceImageSetting">Enable Reference Image</sp-checkbox><br>
+        <sp-checkbox id="persistGeneratedImages">Save Generated Images Persistently</sp-checkbox><br>
+        <sp-checkbox id="enableCritiquePromptEdit">Enable Critique Prompt Edit</sp-checkbox><br>
+        <br>
 
-        <sp-checkbox id="allowNSFW" style="display: none;" checked>Allow NSFW</sp-checkbox>
+        <sp-label>Interface</sp-label><br>
+        <sp-checkbox id="showChatTab" checked>Show Chat Tab</sp-checkbox><br>
+        <sp-checkbox id="enablePrompt" checked>Enable Customised Prompt</sp-checkbox><br>
+        <sp-checkbox id="hidePromptPreset">Hide Prompt Preset</sp-checkbox><br>
+        <sp-checkbox id="previewImage">Preview Image</sp-checkbox><br>
+        <sp-checkbox id="hideLog">Hide Log</sp-checkbox><br>
+        <br>
 
-        <sp-checkbox id="enablePrompt" checked>Enable Customised Prompt</sp-checkbox>
-
-        <sp-checkbox id="hidePromptPreset">Hide Prompt Preset</sp-checkbox>
-
-        <sp-checkbox id="referenceImageSetting">Enable Reference Image</sp-checkbox>
-
-        <sp-checkbox id="enableTextToImage">Enable Text to Image Generation</sp-checkbox>
-
-        <sp-checkbox id="hideLog">Hide Log</sp-checkbox>
-
-        <sp-checkbox id="test">Test Mode</sp-checkbox>
-
-        <sp-checkbox id="skipMask">Skip Layer Mask</sp-checkbox>
-
-        <sp-checkbox id="showModelParameter">Show Model Parameter</sp-checkbox>
-
-        <sp-checkbox id="previewImage">Preview Image</sp-checkbox>
-
-        <sp-checkbox id="persistGeneratedImages">Save Generated Images Persistently</sp-checkbox>
-
-        <sp-checkbox id="enableBatchGeneration">Enable Batch Generate</sp-checkbox>
-
-        <sp-checkbox id="enableCritiquePromptEdit">Enable Critique Prompt Edit</sp-checkbox>
-
-        <sp-checkbox id="adaptiveRatioSetting">Disable Adaptive Ratio</sp-checkbox>
-
-        <sp-checkbox id="adaptiveResolutionSetting">Disable Adaptive Resolution</sp-checkbox>
+        <sp-label>Model and Processing</sp-label><br>
+        <sp-checkbox id="showModelParameter">Show Model Parameter</sp-checkbox><br>
+        <sp-checkbox id="adaptiveRatioSetting">Disable Adaptive Ratio</sp-checkbox><br>
+        <sp-checkbox id="adaptiveResolutionSetting">Disable Adaptive Resolution</sp-checkbox><br>
         <sp-slider id="upgradeFactorSlider" variant="filled" min="1.0" max="2.0" value="1.5" step="0.1"
           style="width: 200px;">
           <sp-label slot="label">Upgrade Factor</sp-label>
         </sp-slider>
+        <br>
+        <sp-checkbox id="skipMask">Skip Layer Mask</sp-checkbox><br>
+        <sp-checkbox id="test">Test Mode</sp-checkbox><br>
+        <sp-checkbox id="allowNSFW" style="display: none;" checked>Allow NSFW</sp-checkbox><br>
 
       </sp-field-group>
 

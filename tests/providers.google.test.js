@@ -233,6 +233,39 @@ test.describe("generateImage (google)", () => {
     assert.equal(body.generationConfig.imageConfig.personGeneration, undefined);
   });
 
+  test("passes AbortSignal to fetch", async (t) => {
+    const originalFetch = global.fetch;
+    let lastCall;
+    global.fetch = async (url, options) => {
+      lastCall = { url, options };
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [{ inlineData: { data: "RESULT" } }]
+              }
+            }
+          ]
+        })
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    const controller = new AbortController();
+    await generateImage({
+      prompt: "hello",
+      base64Image: "BASE",
+      apiKey: { "NanoBananaPro-api-key": "KEY" },
+      signal: controller.signal
+    });
+
+    assert.equal(lastCall.options.signal, controller.signal);
+  });
+
   test("throws on non-ok response", async (t) => {
     const originalFetch = global.fetch;
     global.fetch = async () => ({

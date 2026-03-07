@@ -40,7 +40,8 @@ async function generateImage(options) {
     aspectRatio,
     referenceImages = [],
     modelId,
-    textToImage = false
+    textToImage = false,
+    signal
   } = options || {};
 
   if (prompt.length <= 1) {
@@ -71,6 +72,7 @@ async function generateImage(options) {
   try {
     const res = await fetch("https://ark.cn-beijing.volces.com/api/v3/images/generations", {
       method: "POST",
+      signal,
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer " + apiKey["SeeDream-api-key"]

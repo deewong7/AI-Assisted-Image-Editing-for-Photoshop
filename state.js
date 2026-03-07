@@ -13,7 +13,8 @@ const DEFAULT_API_KEYS = Object.freeze({
 const DEFAULT_PLUGIN_PREFS = Object.freeze({
   persistGeneratedImages: false,
   enableBatchGeneration: false,
-  showChatTab: true
+  showChatTab: true,
+  maxWaitingTimeSeconds: 120
 });
 
 const DEFAULT_PROMPT_PRESETS = {
@@ -123,6 +124,7 @@ function createState({ ui, apiKey, promptPresets, pluginPrefs } = {}) {
   const resolutionValue = ui?.resolutionPicker?.value ?? "2K";
   const aspectRatioValue = ui?.aspectRatioPicker?.value ?? "default";
   const prefs = pluginPrefs || DEFAULT_PLUGIN_PREFS;
+  const maxWaitingTimeSeconds = Math.min(300, Math.max(1, Number(prefs.maxWaitingTimeSeconds) || 120));
 
   return {
     selectedModel: modelValue,
@@ -139,6 +141,7 @@ function createState({ ui, apiKey, promptPresets, pluginPrefs } = {}) {
     skipMask: false,
     persistGeneratedImages: prefs.persistGeneratedImages === true,
     showChatTab: prefs.showChatTab !== false,
+    maxWaitingTimeSeconds,
     textToImage: false,
     currentJobCount: 0,
     apiKey: apiKey || { ...DEFAULT_API_KEYS },

@@ -40,6 +40,22 @@ function createSelect(initialValue = "1") {
   };
 }
 
+function createSlider(initialValue = "120") {
+  const listeners = {};
+  return {
+    value: String(initialValue),
+    addEventListener(type, handler) {
+      listeners[type] = handler;
+    },
+    change(nextValue) {
+      this.value = String(nextValue);
+      if (typeof listeners.change === "function") {
+        listeners.change({ target: this });
+      }
+    }
+  };
+}
+
 function createMenuButton(page, initialStyle = {}) {
   return {
     dataset: { page },
@@ -59,6 +75,7 @@ function createBaseArgs(ui, defaultChatPromptText = "DEFAULT CHAT PROMPT") {
       persistGeneratedImages: false,
       enableBatchGeneration: false,
       showChatTab: true,
+      maxWaitingTimeSeconds: 120,
       batchCount: 1
     },
     models: {},
@@ -181,7 +198,8 @@ test.describe("generated image persistence preference", () => {
     assert.deepEqual(savedPrefs, [{
       persistGeneratedImages: true,
       enableBatchGeneration: false,
-      showChatTab: true
+      showChatTab: true,
+      maxWaitingTimeSeconds: 120
     }]);
   });
 });
@@ -236,8 +254,79 @@ test.describe("batch generation preference", () => {
     assert.deepEqual(savedPrefs, [{
       persistGeneratedImages: false,
       enableBatchGeneration: false,
-      showChatTab: true
+      showChatTab: true,
+      maxWaitingTimeSeconds: 120
     }]);
+  });
+});
+
+test.describe("max waiting time preference", () => {
+  test("initializeUI reflects saved max waiting time setting", () => {
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      maxWaitingTimeSlider: createSlider("120")
+    };
+    const args = createBaseArgs(ui);
+    args.state.maxWaitingTimeSeconds = 180;
+
+    initializeUI(args);
+
+    assert.equal(args.state.maxWaitingTimeSeconds, 180);
+    assert.equal(ui.maxWaitingTimeSlider.value, "180");
+  });
+
+  test("changing max waiting time clamps and saves preference", () => {
+    const savedPrefs = [];
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      maxWaitingTimeSlider: createSlider("120")
+    };
+    const args = createBaseArgs(ui);
+    args.storage.savePluginPrefs = (_storage, prefs) => {
+      savedPrefs.push(prefs);
+    };
+    global.localStorage = {};
+
+    initializeUI(args);
+    bindEvents(args);
+
+    ui.maxWaitingTimeSlider.change("999");
+
+    assert.equal(args.state.maxWaitingTimeSeconds, 300);
+    assert.equal(ui.maxWaitingTimeSlider.value, "300");
+    assert.deepEqual(savedPrefs, [{
+      persistGeneratedImages: false,
+      enableBatchGeneration: false,
+      showChatTab: true,
+      maxWaitingTimeSeconds: 300
+    }]);
+  });
+});
+
+test.describe("generate button click binding", () => {
+  test("prefers generator.handleGenerateClick when available", () => {
+    const ui = {
+      generateButton: createCheckbox(false),
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false)
+    };
+    const args = createBaseArgs(ui);
+    let handleClickCount = 0;
+    let generateCount = 0;
+    args.generator.handleGenerateClick = () => {
+      handleClickCount += 1;
+    };
+    args.generator.generate = () => {
+      generateCount += 1;
+    };
+
+    bindEvents(args);
+    ui.generateButton.click();
+
+    assert.equal(handleClickCount, 1);
+    assert.equal(generateCount, 0);
   });
 });
 
@@ -299,7 +388,8 @@ test.describe("chat tab preference", () => {
     assert.deepEqual(savedPrefs, [{
       persistGeneratedImages: false,
       enableBatchGeneration: false,
-      showChatTab: false
+      showChatTab: false,
+      maxWaitingTimeSeconds: 120
     }]);
   });
 });

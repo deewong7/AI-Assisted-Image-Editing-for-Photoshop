@@ -51,6 +51,7 @@ function getUI() {
     googleModel: document.getElementById("googleModel"),
     allowNSFW: document.getElementById("allowNSFW"),
     previewImageCheckbox: document.getElementById("previewImage"),
+    maxWaitingTimeSlider: document.getElementById("maxWaitingTimeSlider"),
     showChatTabCheckbox: document.getElementById("showChatTab"),
     persistGeneratedImages: document.getElementById("persistGeneratedImages"),
     enableBatchGeneration: document.getElementById("enableBatchGeneration"),
