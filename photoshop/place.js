@@ -160,9 +160,6 @@ function createPlacer({ app, core, constants, fs, imaging, base64ToArrayBuffer, 
 
   async function setLayerColorLabel(layerId, colorLabel) {
     const normalized = normalizeGroupColorLabel(colorLabel)
-    if (normalized === "none") {
-      return
-    }
     await app.batchPlay([
       {
         _obj: "set",

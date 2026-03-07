@@ -1,5 +1,4 @@
 const GROUP_COLOR_LABELS = Object.freeze([
-  "none",
   "red",
   "orange",
   "yellow",
@@ -12,7 +11,6 @@ const GROUP_COLOR_LABELS = Object.freeze([
 const DEFAULT_GROUP_COLOR_LABEL = "blue";
 
 const ACTION_MANAGER_COLOR_MAP = Object.freeze({
-  none: "none",
   red: "red",
   orange: "orange",
   yellow: "yellowColor",
