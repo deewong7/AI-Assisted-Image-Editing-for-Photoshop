@@ -17,22 +17,17 @@ function createCheckbox(initialChecked = false) {
   };
 }
 
-function createSelect(initialValue = "1") {
+function createBatchSlider(initialValue = "1", maxValue = "8") {
   const listeners = {};
-  const items = ["1", "2", "3", "4"].map(value => ({
-    value,
-    selected: value === initialValue
-  }));
   return {
-    value: initialValue,
+    value: String(initialValue),
+    min: "1",
+    max: String(maxValue),
     addEventListener(type, handler) {
       listeners[type] = handler;
     },
-    querySelectorAll(selector) {
-      return selector === "sp-menu-item" ? items : [];
-    },
     change(nextValue) {
-      this.value = nextValue;
+      this.value = String(nextValue);
       if (typeof listeners.change === "function") {
         listeners.change({ target: this });
       }
@@ -40,10 +35,12 @@ function createSelect(initialValue = "1") {
   };
 }
 
-function createSlider(initialValue = "120") {
+function createSlider(initialValue = "120", maxValue = "300") {
   const listeners = {};
   return {
     value: String(initialValue),
+    min: "1",
+    max: String(maxValue),
     addEventListener(type, handler) {
       listeners[type] = handler;
     },
@@ -76,6 +73,9 @@ function createBaseArgs(ui, defaultChatPromptText = "DEFAULT CHAT PROMPT") {
       enableBatchGeneration: false,
       showChatTab: true,
       maxWaitingTimeSeconds: 120,
+      maxBatchCount: 8,
+      enableGeneratedGroupColorLabel: false,
+      generatedGroupColorLabel: "blue",
       batchCount: 1
     },
     models: {},
@@ -199,7 +199,10 @@ test.describe("generated image persistence preference", () => {
       persistGeneratedImages: true,
       enableBatchGeneration: false,
       showChatTab: true,
-      maxWaitingTimeSeconds: 120
+      maxWaitingTimeSeconds: 120,
+      maxBatchCount: 8,
+      enableGeneratedGroupColorLabel: false,
+      generatedGroupColorLabel: "blue"
     }]);
   });
 });
@@ -211,7 +214,7 @@ test.describe("batch generation preference", () => {
       enableCritiquePromptEdit: createCheckbox(false),
       enableBatchGeneration: createCheckbox(false),
       batchCountControl: { style: { display: "none" } },
-      batchCountPicker: createSelect("3")
+      batchCountSlider: createBatchSlider("3")
     };
     const args = createBaseArgs(ui);
     args.state.enableBatchGeneration = true;
@@ -221,7 +224,7 @@ test.describe("batch generation preference", () => {
 
     assert.equal(ui.enableBatchGeneration.checked, true);
     assert.equal(ui.batchCountControl.style.display, "");
-    assert.equal(ui.batchCountPicker.value, "3");
+    assert.equal(ui.batchCountSlider.value, "3");
   });
 
   test("disabling batch generation hides the control, resets batch count, and saves preference", () => {
@@ -231,7 +234,7 @@ test.describe("batch generation preference", () => {
       enableCritiquePromptEdit: createCheckbox(false),
       enableBatchGeneration: createCheckbox(true),
       batchCountControl: { style: { display: "" } },
-      batchCountPicker: createSelect("4")
+      batchCountSlider: createBatchSlider("4")
     };
     const args = createBaseArgs(ui);
     args.state.enableBatchGeneration = true;
@@ -250,12 +253,15 @@ test.describe("batch generation preference", () => {
     assert.equal(args.state.enableBatchGeneration, false);
     assert.equal(args.state.batchCount, 1);
     assert.equal(ui.batchCountControl.style.display, "none");
-    assert.equal(ui.batchCountPicker.value, "1");
+    assert.equal(ui.batchCountSlider.value, "1");
     assert.deepEqual(savedPrefs, [{
       persistGeneratedImages: false,
       enableBatchGeneration: false,
       showChatTab: true,
-      maxWaitingTimeSeconds: 120
+      maxWaitingTimeSeconds: 120,
+      maxBatchCount: 8,
+      enableGeneratedGroupColorLabel: false,
+      generatedGroupColorLabel: "blue"
     }]);
   });
 });
@@ -300,8 +306,124 @@ test.describe("max waiting time preference", () => {
       persistGeneratedImages: false,
       enableBatchGeneration: false,
       showChatTab: true,
-      maxWaitingTimeSeconds: 300
+      maxWaitingTimeSeconds: 300,
+      maxBatchCount: 8,
+      enableGeneratedGroupColorLabel: false,
+      generatedGroupColorLabel: "blue"
     }]);
+  });
+});
+
+test.describe("max batch count preference", () => {
+  test("initializeUI reflects saved max batch count and clamps batch slider", () => {
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      maxBatchCountSlider: createSlider("8", "16"),
+      batchCountSlider: createBatchSlider("1", "8")
+    };
+    const args = createBaseArgs(ui);
+    args.state.enableBatchGeneration = true;
+    args.state.maxBatchCount = 6;
+    args.state.batchCount = 10;
+
+    initializeUI(args);
+
+    assert.equal(args.state.maxBatchCount, 6);
+    assert.equal(ui.maxBatchCountSlider.value, "6");
+    assert.equal(args.state.batchCount, 6);
+    assert.equal(ui.batchCountSlider.max, "6");
+    assert.equal(ui.batchCountSlider.value, "6");
+  });
+
+  test("changing max batch count auto-clamps current batch and saves preference", () => {
+    const savedPrefs = [];
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      maxBatchCountSlider: createSlider("8", "16"),
+      batchCountSlider: createBatchSlider("7", "8")
+    };
+    const args = createBaseArgs(ui);
+    args.state.enableBatchGeneration = true;
+    args.state.batchCount = 7;
+    args.storage.savePluginPrefs = (_storage, prefs) => {
+      savedPrefs.push(prefs);
+    };
+    global.localStorage = {};
+
+    initializeUI(args);
+    bindEvents(args);
+
+    ui.maxBatchCountSlider.change("3");
+
+    assert.equal(args.state.maxBatchCount, 3);
+    assert.equal(args.state.batchCount, 3);
+    assert.equal(ui.batchCountSlider.max, "3");
+    assert.equal(ui.batchCountSlider.value, "3");
+    assert.deepEqual(savedPrefs, [{
+      persistGeneratedImages: false,
+      enableBatchGeneration: true,
+      showChatTab: true,
+      maxWaitingTimeSeconds: 120,
+      maxBatchCount: 3,
+      enableGeneratedGroupColorLabel: false,
+      generatedGroupColorLabel: "blue"
+    }]);
+  });
+});
+
+test.describe("generated batch group color preference", () => {
+  test("initializeUI reflects saved group color preferences", () => {
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      enableGeneratedGroupColorLabel: createCheckbox(false),
+      generatedGroupColorLabel: createBatchSlider("blue", "16")
+    };
+    const args = createBaseArgs(ui);
+    args.state.enableGeneratedGroupColorLabel = true;
+    args.state.generatedGroupColorLabel = "violet";
+
+    initializeUI(args);
+
+    assert.equal(ui.enableGeneratedGroupColorLabel.checked, true);
+    assert.equal(ui.generatedGroupColorLabel.value, "violet");
+    assert.equal(ui.generatedGroupColorLabel.disabled, false);
+  });
+
+  test("changing group color preferences saves state", () => {
+    const savedPrefs = [];
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      enableGeneratedGroupColorLabel: createCheckbox(false),
+      generatedGroupColorLabel: createBatchSlider("blue", "16")
+    };
+    const args = createBaseArgs(ui);
+    args.storage.savePluginPrefs = (_storage, prefs) => {
+      savedPrefs.push(prefs);
+    };
+    global.localStorage = {};
+
+    initializeUI(args);
+    bindEvents(args);
+
+    ui.enableGeneratedGroupColorLabel.checked = true;
+    ui.enableGeneratedGroupColorLabel.click();
+    ui.generatedGroupColorLabel.change("red");
+
+    assert.equal(args.state.enableGeneratedGroupColorLabel, true);
+    assert.equal(args.state.generatedGroupColorLabel, "red");
+    assert.deepEqual(savedPrefs[savedPrefs.length - 1], {
+      persistGeneratedImages: false,
+      enableBatchGeneration: false,
+      showChatTab: true,
+      maxWaitingTimeSeconds: 120,
+      maxBatchCount: 8,
+      enableGeneratedGroupColorLabel: true,
+      generatedGroupColorLabel: "red"
+    });
   });
 });
 
@@ -389,7 +511,10 @@ test.describe("chat tab preference", () => {
       persistGeneratedImages: false,
       enableBatchGeneration: false,
       showChatTab: false,
-      maxWaitingTimeSeconds: 120
+      maxWaitingTimeSeconds: 120,
+      maxBatchCount: 8,
+      enableGeneratedGroupColorLabel: false,
+      generatedGroupColorLabel: "blue"
     }]);
   });
 });
@@ -456,7 +581,7 @@ test.describe("batch count selection", () => {
       enableCritiquePromptEdit: createCheckbox(false),
       enableBatchGeneration: createCheckbox(true),
       batchCountControl: { style: { display: "" } },
-      batchCountPicker: createSelect("1")
+      batchCountSlider: createBatchSlider("1")
     };
     const args = createBaseArgs(ui);
     args.state.enableBatchGeneration = true;
@@ -465,9 +590,30 @@ test.describe("batch count selection", () => {
 
     bindEvents(args);
 
-    ui.batchCountPicker.change("4");
+    ui.batchCountSlider.change("4");
 
     assert.equal(args.state.batchCount, 4);
     assert.equal(logs.some(line => line.includes("Update batch count to: 4")), true);
+  });
+
+  test("batch count clamps to current max batch count", () => {
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      enableBatchGeneration: createCheckbox(true),
+      batchCountControl: { style: { display: "" } },
+      batchCountSlider: createBatchSlider("1", "8")
+    };
+    const args = createBaseArgs(ui);
+    args.state.enableBatchGeneration = true;
+    args.state.maxBatchCount = 5;
+
+    initializeUI(args);
+    bindEvents(args);
+
+    ui.batchCountSlider.change("16");
+
+    assert.equal(args.state.batchCount, 5);
+    assert.equal(ui.batchCountSlider.value, "5");
   });
 });

@@ -5,6 +5,8 @@ const {
   appendReferencePreview,
   clearReferencePreview
 } = require("./ui");
+const { DEFAULT_MAX_BATCH_COUNT, clampMaxBatchCount, clampBatchCount } = require("./limits");
+const { normalizeGroupColorLabel } = require("./group-color-labels");
 
 const KEY_MAP = [
   { fieldKey: "apiKeyGoogle", keyName: "NanoBananaPro-api-key" },
@@ -50,21 +52,18 @@ function applyCritiquePromptEditState(ui, defaultChatPromptText = "") {
   }
 }
 
-function syncBatchCountSelection(ui, count = 1) {
-  if (!ui.batchCountPicker) return;
+function syncBatchCountSlider(ui, count = 1, maxBatchCount = DEFAULT_MAX_BATCH_COUNT) {
+  if (!ui.batchCountSlider) return;
 
-  const normalizedCount = String(Math.min(4, Math.max(1, Number(count) || 1)));
-  ui.batchCountPicker.value = normalizedCount;
-
-  const menuItems = typeof ui.batchCountPicker.querySelectorAll === "function"
-    ? ui.batchCountPicker.querySelectorAll("sp-menu-item")
-    : [];
-  menuItems.forEach(item => {
-    item.selected = item.value === normalizedCount;
-  });
+  const normalizedMax = clampMaxBatchCount(maxBatchCount);
+  const normalizedCount = clampBatchCount(count, normalizedMax);
+  ui.batchCountSlider.min = "1";
+  ui.batchCountSlider.max = String(normalizedMax);
+  ui.batchCountSlider.value = String(normalizedCount);
 }
 
 function applyBatchGenerationState(ui, state) {
+  state.maxBatchCount = clampMaxBatchCount(state.maxBatchCount);
   const enabled = state.enableBatchGeneration === true;
   if (ui.enableBatchGeneration) {
     ui.enableBatchGeneration.checked = enabled;
@@ -74,9 +73,21 @@ function applyBatchGenerationState(ui, state) {
   }
   if (!enabled) {
     state.batchCount = 1;
-    syncBatchCountSelection(ui, 1);
+    syncBatchCountSlider(ui, 1, state.maxBatchCount);
   } else {
-    syncBatchCountSelection(ui, state.batchCount);
+    state.batchCount = clampBatchCount(state.batchCount, state.maxBatchCount);
+    syncBatchCountSlider(ui, state.batchCount, state.maxBatchCount);
+  }
+}
+
+function applyGeneratedGroupColorLabelState(ui, state) {
+  const enabled = state.enableGeneratedGroupColorLabel === true;
+  if (ui.enableGeneratedGroupColorLabel) {
+    ui.enableGeneratedGroupColorLabel.checked = enabled;
+  }
+  if (ui.generatedGroupColorLabel) {
+    ui.generatedGroupColorLabel.disabled = !enabled;
+    ui.generatedGroupColorLabel.value = normalizeGroupColorLabel(state.generatedGroupColorLabel);
   }
 }
 
@@ -139,11 +150,16 @@ function applyChatTabVisibility(ui, state) {
 }
 
 function savePluginPrefsState(storage, state) {
+  const maxBatchCount = clampMaxBatchCount(state.maxBatchCount);
+  const generatedGroupColorLabel = normalizeGroupColorLabel(state.generatedGroupColorLabel);
   storage.savePluginPrefs(localStorage, {
     persistGeneratedImages: state.persistGeneratedImages === true,
     enableBatchGeneration: state.enableBatchGeneration === true,
     showChatTab: state.showChatTab !== false,
-    maxWaitingTimeSeconds: normalizeMaxWaitingTimeSeconds(state.maxWaitingTimeSeconds)
+    maxWaitingTimeSeconds: normalizeMaxWaitingTimeSeconds(state.maxWaitingTimeSeconds),
+    maxBatchCount,
+    enableGeneratedGroupColorLabel: state.enableGeneratedGroupColorLabel === true,
+    generatedGroupColorLabel
   });
 }
 
@@ -164,6 +180,14 @@ function initializeUI({ ui, state, models, logger, storage, defaultChatPromptTex
   if (ui.maxWaitingTimeSlider) {
     ui.maxWaitingTimeSlider.value = String(state.maxWaitingTimeSeconds);
   }
+  state.maxBatchCount = clampMaxBatchCount(state.maxBatchCount);
+  if (ui.maxBatchCountSlider) {
+    ui.maxBatchCountSlider.value = String(state.maxBatchCount);
+  }
+  state.batchCount = clampBatchCount(state.batchCount, state.maxBatchCount);
+  syncBatchCountSlider(ui, state.batchCount, state.maxBatchCount);
+  state.generatedGroupColorLabel = normalizeGroupColorLabel(state.generatedGroupColorLabel);
+  applyGeneratedGroupColorLabelState(ui, state);
   applyBatchGenerationState(ui, state);
   applyChatTabVisibility(ui, state);
   applyCritiquePromptEditState(ui, defaultChatPromptText);
@@ -210,10 +234,10 @@ function bindEvents({
     });
   }
 
-  if (ui.batchCountPicker) {
-    ui.batchCountPicker.addEventListener("change", (e) => {
-      state.batchCount = Math.min(4, Math.max(1, Number(e.target.value) || 1));
-      syncBatchCountSelection(ui, state.batchCount);
+  if (ui.batchCountSlider) {
+    ui.batchCountSlider.addEventListener("change", (e) => {
+      state.batchCount = clampBatchCount(e.target.value, state.maxBatchCount);
+      syncBatchCountSlider(ui, state.batchCount, state.maxBatchCount);
       console.log("Update batch count to:", state.batchCount);
       logLine("Update batch count to:", state.batchCount);
     });
@@ -471,6 +495,32 @@ function bindEvents({
     ui.maxWaitingTimeSlider.addEventListener("change", (e) => {
       state.maxWaitingTimeSeconds = normalizeMaxWaitingTimeSeconds(e.target?.value);
       ui.maxWaitingTimeSlider.value = String(state.maxWaitingTimeSeconds);
+      savePluginPrefsState(storage, state);
+    });
+  }
+
+  if (ui.maxBatchCountSlider) {
+    ui.maxBatchCountSlider.addEventListener("change", (e) => {
+      state.maxBatchCount = clampMaxBatchCount(e.target?.value);
+      ui.maxBatchCountSlider.value = String(state.maxBatchCount);
+      state.batchCount = clampBatchCount(state.batchCount, state.maxBatchCount);
+      syncBatchCountSlider(ui, state.batchCount, state.maxBatchCount);
+      savePluginPrefsState(storage, state);
+    });
+  }
+
+  if (ui.enableGeneratedGroupColorLabel) {
+    ui.enableGeneratedGroupColorLabel.addEventListener("click", (e) => {
+      state.enableGeneratedGroupColorLabel = e.target.checked;
+      applyGeneratedGroupColorLabelState(ui, state);
+      savePluginPrefsState(storage, state);
+    });
+  }
+
+  if (ui.generatedGroupColorLabel) {
+    ui.generatedGroupColorLabel.addEventListener("change", (e) => {
+      state.generatedGroupColorLabel = normalizeGroupColorLabel(e.target?.value);
+      applyGeneratedGroupColorLabelState(ui, state);
       savePluginPrefsState(storage, state);
     });
   }

@@ -155,15 +155,10 @@
 
         <div id="generateBtnDiv">
           <sp-div id="batchCountControl" style="display: none;">
-            <sp-label for="batchCountPicker">Batch Count</sp-label>
-            <sp-picker placeholder="Choose batch count..." style="width: 219px;">
-              <sp-menu id="batchCountPicker" slot="options">
-                <sp-menu-item value="1" selected>1</sp-menu-item>
-                <sp-menu-item value="2">2</sp-menu-item>
-                <sp-menu-item value="3">3</sp-menu-item>
-                <sp-menu-item value="4">4</sp-menu-item>
-              </sp-menu>
-            </sp-picker>
+            <sp-slider id="batchCountSlider" variant="filled" min="1" max="8" value="1" step="1"
+              style="width: 219px;">
+              <sp-label slot="label">Batch Count</sp-label>
+            </sp-slider>
           </sp-div>
           <!-- <sp-button class="shortBtn" variant="secondary" id="loadPrompt">Load</sp-button> -->
           <sp-button class="shortBtn" id="generate">Generate</sp-button>
@@ -244,6 +239,23 @@
           style="width: 200px;">
           <sp-label slot="label">Maximum Waiting Time (s)</sp-label>
         </sp-slider>
+        <sp-slider id="maxBatchCountSlider" variant="filled" min="1" max="16" value="8" step="1"
+          style="width: 200px;">
+          <sp-label slot="label">Maximum Batch Count</sp-label>
+        </sp-slider>
+        <sp-checkbox id="enableGeneratedGroupColorLabel">Color Generated Batch Group</sp-checkbox><br>
+        <sp-picker id="generatedGroupColorLabel" placeholder="Choose color label..." style="width: 200px;">
+          <sp-menu slot="options">
+            <sp-menu-item value="blue" selected>Blue</sp-menu-item>
+            <sp-menu-item value="none">None</sp-menu-item>
+            <sp-menu-item value="red">Red</sp-menu-item>
+            <sp-menu-item value="orange">Orange</sp-menu-item>
+            <sp-menu-item value="yellow">Yellow</sp-menu-item>
+            <sp-menu-item value="green">Green</sp-menu-item>
+            <sp-menu-item value="violet">Violet</sp-menu-item>
+            <sp-menu-item value="gray">Gray</sp-menu-item>
+          </sp-menu>
+        </sp-picker>
         <br>
         <sp-checkbox id="enableBatchGeneration">Enable Batch Generate</sp-checkbox><br>
         <sp-checkbox id="enableTextToImage">Enable Text to Image Generation</sp-checkbox><br>

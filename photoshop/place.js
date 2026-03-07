@@ -1,3 +1,5 @@
+const { normalizeGroupColorLabel, toActionManagerColorValue } = require("../group-color-labels");
+
 function createPlacer({ app, core, constants, fs, imaging, base64ToArrayBuffer, logLine }) {
   function base64ToBuffer(base64) {
     const buffer = base64ToArrayBuffer(base64)
@@ -156,6 +158,31 @@ function createPlacer({ app, core, constants, fs, imaging, base64ToArrayBuffer, 
     return suffix ? `Generated Batch - ${suffix}` : "Generated Batch"
   }
 
+  async function setLayerColorLabel(layerId, colorLabel) {
+    const normalized = normalizeGroupColorLabel(colorLabel)
+    if (normalized === "none") {
+      return
+    }
+    await app.batchPlay([
+      {
+        _obj: "set",
+        _target: [
+          {
+            _ref: "layer",
+            _id: layerId
+          }
+        ],
+        to: {
+          _obj: "layer",
+          color: {
+            _enum: "color",
+            _value: toActionManagerColorValue(normalized)
+          }
+        }
+      }
+    ], { synchronousExecution: true })
+  }
+
   async function placeToCurrentDocAtSelection(base64, bounds, suffix = "", options = {}) {
     if (!base64 || base64?.length === 0) {
       console.log("No base64 data to place.")
@@ -195,10 +222,13 @@ function createPlacer({ app, core, constants, fs, imaging, base64ToArrayBuffer, 
             .map(layerId => findDocumentLayerById(layerId))
             .filter(Boolean)
           if (fromLayers.length > 1) {
-            await app.activeDocument.createLayerGroup({
+            const createdGroup = await app.activeDocument.createLayerGroup({
               name: createBatchGroupName(suffix),
               fromLayers
             })
+            if (options.enableGeneratedGroupColorLabel === true && createdGroup?.id) {
+              await setLayerColorLabel(createdGroup.id, options.generatedGroupColorLabel)
+            }
           }
         })
       } catch (error) {

@@ -143,7 +143,10 @@ test.describe("loadPluginPrefsFromStorage", () => {
       persistGeneratedImages: false,
       enableBatchGeneration: false,
       showChatTab: true,
-      maxWaitingTimeSeconds: 120
+      maxWaitingTimeSeconds: 120,
+      maxBatchCount: 8,
+      enableGeneratedGroupColorLabel: false,
+      generatedGroupColorLabel: "blue"
     };
     assert.deepEqual(utils.loadPluginPrefsFromStorage(storage, defaults), defaults);
   });
@@ -156,13 +159,19 @@ test.describe("loadPluginPrefsFromStorage", () => {
       persistGeneratedImages: false,
       enableBatchGeneration: false,
       showChatTab: true,
-      maxWaitingTimeSeconds: 120
+      maxWaitingTimeSeconds: 120,
+      maxBatchCount: 8,
+      enableGeneratedGroupColorLabel: false,
+      generatedGroupColorLabel: "blue"
     };
     assert.deepEqual(utils.loadPluginPrefsFromStorage(storage, defaults), {
       persistGeneratedImages: true,
       enableBatchGeneration: false,
       showChatTab: true,
-      maxWaitingTimeSeconds: 120
+      maxWaitingTimeSeconds: 120,
+      maxBatchCount: 8,
+      enableGeneratedGroupColorLabel: false,
+      generatedGroupColorLabel: "blue"
     });
   });
 
@@ -174,7 +183,10 @@ test.describe("loadPluginPrefsFromStorage", () => {
       persistGeneratedImages: false,
       enableBatchGeneration: false,
       showChatTab: true,
-      maxWaitingTimeSeconds: 120
+      maxWaitingTimeSeconds: 120,
+      maxBatchCount: 8,
+      enableGeneratedGroupColorLabel: false,
+      generatedGroupColorLabel: "blue"
     };
     assert.deepEqual(utils.loadPluginPrefsFromStorage(storage, defaults), defaults);
   });
@@ -187,13 +199,19 @@ test.describe("savePluginPrefsToStorage", () => {
       persistGeneratedImages: true,
       enableBatchGeneration: false,
       showChatTab: false,
-      maxWaitingTimeSeconds: 90
+      maxWaitingTimeSeconds: 90,
+      maxBatchCount: 12,
+      enableGeneratedGroupColorLabel: true,
+      generatedGroupColorLabel: "orange"
     });
     assert.equal(storage._store.pluginPrefs, JSON.stringify({
       persistGeneratedImages: true,
       enableBatchGeneration: false,
       showChatTab: false,
-      maxWaitingTimeSeconds: 90
+      maxWaitingTimeSeconds: 90,
+      maxBatchCount: 12,
+      enableGeneratedGroupColorLabel: true,
+      generatedGroupColorLabel: "orange"
     }));
   });
 });

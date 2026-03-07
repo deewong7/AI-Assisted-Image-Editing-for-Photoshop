@@ -1,5 +1,6 @@
 const { getGenerationBackendName } = require("./providers/index.js")
 const { setImagePreview, setChatImagePreview, renderJobCount, renderBatchProgress } = require('./ui.js')
+const { clampMaxBatchCount, clampBatchCount } = require("./limits")
 function createGenerator({
   app,
   core,
@@ -66,10 +67,6 @@ function createGenerator({
       Number.isFinite(bounds.height) &&
       bounds.width > 0 &&
       bounds.height > 0;
-  }
-
-  function clampBatchCount(value) {
-    return Math.min(4, Math.max(1, Number(value) || 1))
   }
 
   function clampMaxWaitingTimeSeconds(value) {
@@ -355,8 +352,9 @@ function createGenerator({
       return
     }
 
+    state.maxBatchCount = clampMaxBatchCount(state.maxBatchCount)
     const targetBatchCount = state.enableBatchGeneration === true
-      ? clampBatchCount(state.batchCount)
+      ? clampBatchCount(state.batchCount, state.maxBatchCount)
       : 1
     const shouldFetchBase64 = !state.textToImage || targetModel === "localtest"
     const temperatureInput = parseFloat(ui.temperature?.value)
@@ -381,7 +379,9 @@ function createGenerator({
     }
     const placementOptions = {
       skipMask: state.skipMask,
-      persistGeneratedImages: state.persistGeneratedImages
+      persistGeneratedImages: state.persistGeneratedImages,
+      enableGeneratedGroupColorLabel: state.enableGeneratedGroupColorLabel,
+      generatedGroupColorLabel: state.generatedGroupColorLabel
     }
 
     console.log("Prompt: " + prompt)

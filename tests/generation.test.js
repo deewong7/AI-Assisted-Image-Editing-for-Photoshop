@@ -686,6 +686,86 @@ test.describe("createGenerator", () => {
     assert.equal(ui.generateButton.style.backgroundColor, "");
   });
 
+  test("clamps runtime batch count to maxBatchCount", async () => {
+    let providerCallCount = 0;
+    const batchPlaceCalls = [];
+
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          selection: {
+            bounds: {
+              left: 0,
+              right: 100,
+              top: 0,
+              bottom: 100,
+              width: 100,
+              height: 100
+            }
+          }
+        }
+      },
+      core: {
+        showAlert: () => {}
+      },
+      ui: {
+        testCheckbox: { checked: false },
+        promptInput: { value: "batch prompt" },
+        generateButton: { disabled: false, innerText: "Generate" },
+        allowNSFW: { checked: false },
+        temperature: { value: "1.0" },
+        topP: { value: "0.90" },
+        imageToProcess: {},
+        jobCount: { style: { display: "none" }, textContent: "" }
+      },
+      state: {
+        selectedModel: "gemini-3.1-flash-image-preview",
+        aspectRatio: "3:4",
+        enableBatchGeneration: true,
+        batchCount: 12,
+        maxBatchCount: 3,
+        textToImage: false,
+        imageArray: [],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: false,
+        apiKey: { "NanoBananaPro-api-key": "KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: false,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {},
+        async placeBatchToCurrentDocAtSelection(images) {
+          batchPlaceCalls.push(images);
+        }
+      },
+      generateWithProvider: async () => {
+        providerCallCount += 1;
+        return "generated-b64-" + providerCallCount;
+      },
+      critiqueWithProvider: async function* () {},
+      logLine: () => {},
+      utils: {
+        pickTier: () => "2K"
+      },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image",
+      nanoBananaModelId: "gemini-3-pro-image-preview"
+    });
+
+    await generator.generate();
+
+    assert.equal(providerCallCount, 3);
+    assert.equal(batchPlaceCalls.length, 1);
+    assert.deepEqual(batchPlaceCalls[0], ["generated-b64-1", "generated-b64-2", "generated-b64-3"]);
+  });
+
   test("forces single-request behavior when batch generation is disabled", async () => {
     let providerCallCount = 0;
     const singlePlaceCalls = [];

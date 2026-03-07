@@ -67,6 +67,7 @@ function createPlacerForTest(fs) {
 function createPlacementHarness() {
   const { fs, calls } = createFsHarness();
   const groupCalls = [];
+  const colorLabelCalls = [];
   let nextLayerId = 2;
 
   const backgroundLayer = {
@@ -83,23 +84,43 @@ function createPlacementHarness() {
     layers: [backgroundLayer],
     activeLayers: [backgroundLayer],
     async createLayerGroup({ name, fromLayers }) {
-      groupCalls.push({ name, fromLayers });
-      return { id: nextLayerId++, name };
+      const group = { id: nextLayerId++, name };
+      groupCalls.push({ name, fromLayers, id: group.id });
+      return group;
     }
   };
 
   const app = {
     activeDocument,
-    async batchPlay() {
-      const placedLayer = {
-        id: nextLayerId++,
-        name: "Placed Layer",
-        bounds: { width: 100, height: 100 },
-        scale() {},
-        move() {}
-      };
-      activeDocument.layers.unshift(placedLayer);
-      activeDocument.activeLayers = [placedLayer];
+    async batchPlay(commands) {
+      const placeEvent = Array.isArray(commands)
+        ? commands.find(command => command?._obj === "placeEvent")
+        : null;
+      if (placeEvent) {
+        const placedLayer = {
+          id: nextLayerId++,
+          name: "Placed Layer",
+          bounds: { width: 100, height: 100 },
+          scale() {},
+          move() {}
+        };
+        activeDocument.layers.unshift(placedLayer);
+        activeDocument.activeLayers = [placedLayer];
+      }
+
+      const colorSet = Array.isArray(commands)
+        ? commands.find(command =>
+          command?._obj === "set" &&
+          command?.to?.color?._enum === "color" &&
+          command?.to?.color?._value
+        )
+        : null;
+      if (colorSet) {
+        colorLabelCalls.push({
+          layerId: colorSet?._target?.[0]?._id,
+          color: colorSet?.to?.color?._value
+        });
+      }
       return [];
     }
   };
@@ -132,7 +153,8 @@ function createPlacementHarness() {
   return {
     placer,
     calls,
-    groupCalls
+    groupCalls,
+    colorLabelCalls
   };
 }
 
@@ -201,5 +223,34 @@ test.describe("createPlacer output folder selection", () => {
     });
 
     assert.equal(groupCalls.length, 0);
+  });
+
+  test("applies configured color label to generated batch group when enabled", async () => {
+    const { placer, groupCalls, colorLabelCalls } = createPlacementHarness();
+
+    await placer.placeBatchToCurrentDocAtSelection(["QUJD", "REVG"], bounds, "model", {
+      persistGeneratedImages: false,
+      skipMask: true,
+      enableGeneratedGroupColorLabel: true,
+      generatedGroupColorLabel: "green"
+    });
+
+    assert.equal(groupCalls.length, 1);
+    assert.equal(colorLabelCalls.length, 1);
+    assert.equal(colorLabelCalls[0].layerId, groupCalls[0].id);
+    assert.equal(colorLabelCalls[0].color, "grain");
+  });
+
+  test("does not apply color label when group coloring is disabled", async () => {
+    const { placer, colorLabelCalls } = createPlacementHarness();
+
+    await placer.placeBatchToCurrentDocAtSelection(["QUJD", "REVG"], bounds, "model", {
+      persistGeneratedImages: false,
+      skipMask: true,
+      enableGeneratedGroupColorLabel: false,
+      generatedGroupColorLabel: "red"
+    });
+
+    assert.equal(colorLabelCalls.length, 0);
   });
 });

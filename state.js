@@ -3,6 +3,8 @@ const SEEDREAM_5 = "doubao-seedream-5-0-260128";
 const NANOBANANA_PRO = "gemini-3-pro-image-preview";
 const NANOBANANA_2 = "gemini-3.1-flash-image-preview";
 const GROK_IMAGINE = "grok-imagine-image";
+const { DEFAULT_MAX_BATCH_COUNT, clampMaxBatchCount, clampBatchCount } = require("./limits");
+const { DEFAULT_GROUP_COLOR_LABEL, normalizeGroupColorLabel } = require("./group-color-labels");
 
 const DEFAULT_API_KEYS = Object.freeze({
   "NanoBananaPro-api-key": "",
@@ -14,7 +16,10 @@ const DEFAULT_PLUGIN_PREFS = Object.freeze({
   persistGeneratedImages: false,
   enableBatchGeneration: false,
   showChatTab: true,
-  maxWaitingTimeSeconds: 120
+  maxWaitingTimeSeconds: 120,
+  maxBatchCount: DEFAULT_MAX_BATCH_COUNT,
+  enableGeneratedGroupColorLabel: false,
+  generatedGroupColorLabel: DEFAULT_GROUP_COLOR_LABEL
 });
 
 const DEFAULT_PROMPT_PRESETS = {
@@ -125,12 +130,15 @@ function createState({ ui, apiKey, promptPresets, pluginPrefs } = {}) {
   const aspectRatioValue = ui?.aspectRatioPicker?.value ?? "default";
   const prefs = pluginPrefs || DEFAULT_PLUGIN_PREFS;
   const maxWaitingTimeSeconds = Math.min(300, Math.max(1, Number(prefs.maxWaitingTimeSeconds) || 120));
+  const maxBatchCount = clampMaxBatchCount(prefs.maxBatchCount);
+  const initialBatchCountInput = ui?.batchCountSlider?.value ?? ui?.batchCountPicker?.value;
+  const groupColorLabel = normalizeGroupColorLabel(prefs.generatedGroupColorLabel);
 
   return {
     selectedModel: modelValue,
     resolution: resolutionValue,
     aspectRatio: aspectRatioValue,
-    batchCount: Math.min(4, Math.max(1, Number(ui?.batchCountPicker?.value) || 1)),
+    batchCount: clampBatchCount(initialBatchCountInput, maxBatchCount),
     adaptiveResolutionSetting: true,
     upgradeFactor: 1.5,
     showModelParameters: false,
@@ -142,6 +150,9 @@ function createState({ ui, apiKey, promptPresets, pluginPrefs } = {}) {
     persistGeneratedImages: prefs.persistGeneratedImages === true,
     showChatTab: prefs.showChatTab !== false,
     maxWaitingTimeSeconds,
+    maxBatchCount,
+    enableGeneratedGroupColorLabel: prefs.enableGeneratedGroupColorLabel === true,
+    generatedGroupColorLabel: groupColorLabel,
     textToImage: false,
     currentJobCount: 0,
     apiKey: apiKey || { ...DEFAULT_API_KEYS },
