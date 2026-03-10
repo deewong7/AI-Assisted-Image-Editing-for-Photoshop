@@ -25,10 +25,68 @@ function getGenerationBackendName(options = {}) {
   return useVertexApi ? "Vertex AI" : "Google AI Studio";
 }
 
-function extractTextFromPayload(payload, modelId) {
-  if (payload?.promptFeedback?.blockReasonMessage) {
-    throw new Error("Prompt was blocked: " + payload.promptFeedback.blockReasonMessage);
+function extractPromptBlockMessage(promptFeedback) {
+  const blockReasonMessage = typeof promptFeedback?.blockReasonMessage === "string"
+    ? promptFeedback.blockReasonMessage.trim()
+    : "";
+  if (blockReasonMessage.length > 0) {
+    return "Prompt was blocked: " + blockReasonMessage;
   }
+
+  const blockReason = typeof promptFeedback?.blockReason === "string"
+    ? promptFeedback.blockReason.trim()
+    : "";
+  if (blockReason.length > 0) {
+    return "Prompt was blocked: " + blockReason;
+  }
+
+  return "";
+}
+
+function extractPayloadErrorMessage(payload) {
+  if (!payload) {
+    return "";
+  }
+
+  const promptBlockMessage = extractPromptBlockMessage(payload.promptFeedback);
+  if (promptBlockMessage) {
+    return promptBlockMessage;
+  }
+
+  if (payload?.error?.message) {
+    return payload.error.message;
+  }
+
+  if (typeof payload?.error === "string") {
+    return payload.error;
+  }
+
+  return "";
+}
+
+function extractResponseErrorMessage(responseText) {
+  if (typeof responseText !== "string") {
+    return "";
+  }
+  const trimmed = responseText.trim();
+  if (trimmed.length === 0) {
+    return "";
+  }
+
+  try {
+    const payload = JSON.parse(trimmed);
+    return extractPayloadErrorMessage(payload) || trimmed;
+  } catch {
+    return trimmed;
+  }
+}
+
+function extractTextFromPayload(payload, modelId) {
+  const payloadErrorMessage = extractPayloadErrorMessage(payload);
+  if (payloadErrorMessage) {
+    throw new Error(payloadErrorMessage);
+  }
+
   const parts = payload?.candidates?.flatMap(candidate => candidate?.content?.parts || []);
   const textParts = parts
     .map(part => part?.text)
@@ -49,14 +107,6 @@ function extractTextFromPayload(payload, modelId) {
 
   if (typeof payload === "string" && payload.length > 0) {
     return [payload];
-  }
-
-  if (payload?.error?.message) {
-    throw new Error(payload.error.message);
-  }
-
-  if (typeof payload?.error === "string") {
-    throw new Error(payload.error);
   }
 
   return [];
@@ -283,7 +333,9 @@ async function generateImage(options) {
     if (!response.ok) {
       const errorData = await response.text();
       console.error(`HTTP error! status: ${response.status}`, errorData);
-      throw new Error(`API call failed with status ${response.status} ${response.statusText}`);
+      const statusMessage = `API call failed with status ${response.status} ${response.statusText}`;
+      const serverMessage = extractResponseErrorMessage(errorData);
+      throw new Error(serverMessage ? `${statusMessage}: ${serverMessage}` : statusMessage);
     }
 
     let json;
@@ -293,12 +345,13 @@ async function generateImage(options) {
       }
       console.log("Parsing json from server's response.");
       json = await response.json();
-      if (json.promptFeedback?.blockReasonMessage) {
-        console.log(json.promptFeedback.blockReasonMessage);
+      const payloadErrorMessage = extractPayloadErrorMessage(json);
+      if (payloadErrorMessage) {
+        console.log(payloadErrorMessage);
         if (typeof logLine === "function") {
-          logLine(json.promptFeedback.blockReasonMessage);
+          logLine(payloadErrorMessage);
         }
-        throw new Error("Prompt was blocked: " + json.promptFeedback.blockReasonMessage);
+        throw new Error(payloadErrorMessage);
       }
 
       console.log("parsed response JSON:", json);

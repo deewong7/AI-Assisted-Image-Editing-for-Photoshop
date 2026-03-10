@@ -288,6 +288,32 @@ test.describe("generateImage (google)", () => {
     );
   });
 
+  test("throws non-ok response with parsed server message", async (t) => {
+    const originalFetch = global.fetch;
+    global.fetch = async () => ({
+      ok: false,
+      status: 429,
+      statusText: "Too Many Requests",
+      text: async () => JSON.stringify({
+        error: {
+          message: "Rate limit reached"
+        }
+      })
+    });
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    await assert.rejects(
+      () => generateImage({
+        prompt: "hello",
+        base64Image: "BASE",
+        apiKey: { "NanoBananaPro-api-key": "KEY" }
+      }),
+      /API call failed with status 429 Too Many Requests: Rate limit reached/
+    );
+  });
+
   test("throws on prompt block", async (t) => {
     const originalFetch = global.fetch;
     global.fetch = async () => ({
@@ -307,6 +333,28 @@ test.describe("generateImage (google)", () => {
         apiKey: { "NanoBananaPro-api-key": "KEY" }
       }),
       /Prompt was blocked: blocked/
+    );
+  });
+
+  test("throws on prompt block reason without message", async (t) => {
+    const originalFetch = global.fetch;
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        promptFeedback: { blockReason: "PROHIBITED_CONTENT" }
+      })
+    });
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    await assert.rejects(
+      () => generateImage({
+        prompt: "hello",
+        base64Image: "BASE",
+        apiKey: { "NanoBananaPro-api-key": "KEY" }
+      }),
+      /Prompt was blocked: PROHIBITED_CONTENT/
     );
   });
 });
@@ -513,6 +561,48 @@ test.describe("critiqueImageStream (google)", () => {
         }
       },
       /Prompt was blocked: blocked/
+    );
+  });
+
+  test("throws when stream reports blocked prompt reason without message", async (t) => {
+    const originalFetch = global.fetch;
+    global.fetch = async () => {
+      const encoder = new TextEncoder();
+      const chunks = [encoder.encode(`data: ${JSON.stringify({
+        promptFeedback: { blockReason: "PROHIBITED_CONTENT" }
+      })}\n\n`)];
+      let index = 0;
+      return {
+        ok: true,
+        body: {
+          getReader() {
+            return {
+              async read() {
+                if (index >= chunks.length) {
+                  return { done: true };
+                }
+                return { done: false, value: chunks[index++] };
+              }
+            };
+          }
+        }
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    await assert.rejects(
+      async () => {
+        for await (const _chunk of critiqueImageStream({
+          prompt: "critique this",
+          base64Image: "BASE",
+          apiKey: { "NanoBananaPro-api-key": "AQ_KEY" }
+        })) {
+          // no-op
+        }
+      },
+      /Prompt was blocked: PROHIBITED_CONTENT/
     );
   });
 });
