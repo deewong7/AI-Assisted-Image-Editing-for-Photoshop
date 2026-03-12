@@ -5,6 +5,7 @@ const imaging = require("photoshop").imaging;
 const fs = require("uxp").storage.localFileSystem;
 
 const utils = require("./utils");
+const { serializePromptLibrary, parsePromptLibraryJson } = require("./prompt-library");
 const { generateWithProvider, critiqueWithProvider } = require("./providers/index.js");
 const { createSelection } = require("./photoshop/selection");
 const { createPlacer } = require("./photoshop/place");
@@ -75,6 +76,44 @@ async function openImageFolder() {
   return folder.nativePath;
 }
 
+function getSingleFile(fileOrFiles) {
+  if (Array.isArray(fileOrFiles)) {
+    return fileOrFiles[0];
+  }
+  return fileOrFiles;
+}
+
+async function exportPromptLibrary(promptPresets) {
+  const file = await fs.getFileForSaving("prompt-library.json", { types: ["json"] });
+  if (!file) {
+    return { cancelled: true };
+  }
+
+  const payload = serializePromptLibrary(promptPresets);
+  await file.write(payload);
+  return {
+    cancelled: false,
+    filePath: file.nativePath
+  };
+}
+
+async function importPromptLibrary() {
+  const selected = await fs.getFileForOpening({ types: ["json"], allowMultiple: false });
+  const file = getSingleFile(selected);
+  if (!file) {
+    return { cancelled: true };
+  }
+
+  const content = await file.read();
+  const parsed = parsePromptLibraryJson(content);
+  return {
+    cancelled: false,
+    filePath: file.nativePath,
+    version: parsed.version,
+    presets: parsed.presets
+  };
+}
+
 entrypoints.setup({
   commands: {},
   panels: {
@@ -101,6 +140,8 @@ bindEvents({
   storage,
   generator,
   openImageFolder,
+  exportPromptLibrary,
+  importPromptLibrary,
   selection,
   app,
   core,

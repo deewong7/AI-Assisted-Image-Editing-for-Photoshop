@@ -17,6 +17,21 @@ function createCheckbox(initialChecked = false) {
   };
 }
 
+function createButton() {
+  const listeners = {};
+  return {
+    disabled: false,
+    addEventListener(type, handler) {
+      listeners[type] = handler;
+    },
+    click() {
+      if (typeof listeners.click === "function") {
+        return listeners.click({ target: this });
+      }
+    }
+  };
+}
+
 function createBatchSlider(initialValue = "1", maxValue = "8") {
   const listeners = {};
   return {
@@ -51,6 +66,40 @@ function createSlider(initialValue = "120", maxValue = "300") {
       }
     }
   };
+}
+
+function createPromptPicker() {
+  const menuItems = [];
+  const picker = {
+    value: "",
+    options: menuItems,
+    selectedOptions: [],
+    selectedIndex: -1,
+    addEventListener() {},
+    appendChild(item) {
+      menuItems.push(item);
+    },
+    querySelectorAll(selector) {
+      if (selector === "sp-menu-item") {
+        return menuItems;
+      }
+      return [];
+    }
+  };
+
+  Object.defineProperty(picker, "innerHTML", {
+    get() {
+      return "";
+    },
+    set() {
+      menuItems.length = 0;
+      picker.value = "";
+      picker.selectedOptions = [];
+      picker.selectedIndex = -1;
+    }
+  });
+
+  return picker;
 }
 
 function createMenuButton(page, initialStyle = {}) {
@@ -615,5 +664,153 @@ test.describe("batch count selection", () => {
 
     assert.equal(args.state.batchCount, 5);
     assert.equal(ui.batchCountSlider.value, "5");
+  });
+});
+
+test.describe("prompt library import/export", () => {
+  test("export button forwards current prompt presets", async () => {
+    const logs = [];
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      exportPromptLibraryButton: createButton()
+    };
+    const args = createBaseArgs(ui);
+    args.state.promptPresets = {
+      keep: "value"
+    };
+    args.logger.logLine = (...parts) => logs.push(parts.join(" "));
+
+    let receivedPresets = null;
+    args.exportPromptLibrary = async (presets) => {
+      receivedPresets = presets;
+      return {
+        cancelled: false,
+        filePath: "/tmp/prompt-library.json"
+      };
+    };
+
+    bindEvents(args);
+    await ui.exportPromptLibraryButton.click();
+
+    assert.deepEqual(receivedPresets, {
+      keep: "value"
+    });
+    assert.equal(ui.exportPromptLibraryButton.disabled, false);
+    assert.equal(logs.some(line => line.includes("Exported 1 prompt preset(s).")), true);
+    assert.equal(logs.some(line => line.includes("/tmp/prompt-library.json")), true);
+  });
+
+  test("import button merges presets with overwrite and persists", async (t) => {
+    const logs = [];
+    const saved = [];
+    const originalDocument = global.document;
+    global.document = {
+      createElement() {
+        return {};
+      }
+    };
+    t.after(() => {
+      global.document = originalDocument;
+    });
+
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      importPromptLibraryButton: createButton(),
+      promptPicker: createPromptPicker(),
+      promptPresetTextarea: { value: "before" },
+      newPresetName: { value: "before" }
+    };
+    const args = createBaseArgs(ui);
+    args.state.promptPresets = {
+      existing: "old value",
+      keep: "keep value"
+    };
+    args.logger.logLine = (...parts) => logs.push(parts.join(" "));
+    args.storage.savePromptPresets = (_storage, presets) => {
+      saved.push({ ...presets });
+    };
+    args.importPromptLibrary = async () => ({
+      cancelled: false,
+      filePath: "/tmp/import.json",
+      presets: {
+        existing: "new value",
+        added: "added value"
+      }
+    });
+    global.localStorage = {};
+
+    bindEvents(args);
+    await ui.importPromptLibraryButton.click();
+
+    assert.deepEqual(args.state.promptPresets, {
+      existing: "new value",
+      keep: "keep value",
+      added: "added value"
+    });
+    assert.deepEqual(saved, [{
+      existing: "new value",
+      keep: "keep value",
+      added: "added value"
+    }]);
+    assert.equal(ui.promptPicker.options.length, 3);
+    assert.equal(ui.promptPresetTextarea.value, "");
+    assert.equal(ui.newPresetName.value, "");
+    assert.equal(ui.importPromptLibraryButton.disabled, false);
+    assert.equal(logs.some(line => line.includes("Imported 2 prompt preset(s) (1 overwritten).")), true);
+    assert.equal(logs.some(line => line.includes("/tmp/import.json")), true);
+  });
+
+  test("import button no-ops when picker is canceled", async () => {
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      importPromptLibraryButton: createButton(),
+      promptPicker: createPromptPicker()
+    };
+    const args = createBaseArgs(ui);
+    args.state.promptPresets = { keep: "value" };
+
+    let saveCalls = 0;
+    args.storage.savePromptPresets = () => {
+      saveCalls += 1;
+    };
+    args.importPromptLibrary = async () => ({
+      cancelled: true
+    });
+
+    bindEvents(args);
+    await ui.importPromptLibraryButton.click();
+
+    assert.equal(saveCalls, 0);
+    assert.deepEqual(args.state.promptPresets, { keep: "value" });
+    assert.equal(ui.promptPicker.options.length, 0);
+    assert.equal(ui.importPromptLibraryButton.disabled, false);
+  });
+
+  test("import button reports errors via alert", async () => {
+    const logs = [];
+    const alerts = [];
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      importPromptLibraryButton: createButton(),
+      promptPicker: createPromptPicker()
+    };
+    const args = createBaseArgs(ui);
+    args.logger.logLine = (...parts) => logs.push(parts.join(" "));
+    args.core.showAlert = (message) => alerts.push(message);
+    args.importPromptLibrary = async () => {
+      throw new Error("Invalid JSON file.");
+    };
+
+    bindEvents(args);
+    await ui.importPromptLibraryButton.click();
+
+    assert.equal(alerts.length, 1);
+    assert.equal(alerts[0], "Failed to import prompt library. Check log for details.");
+    assert.equal(logs.some(line => line.includes("Failed to import prompt library: Invalid JSON file.")), true);
+    assert.equal(ui.importPromptLibraryButton.disabled, false);
   });
 });

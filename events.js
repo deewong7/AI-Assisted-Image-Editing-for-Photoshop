@@ -163,6 +163,13 @@ function savePluginPrefsState(storage, state) {
   });
 }
 
+function normalizePromptPresetMap(presets) {
+  if (!presets || typeof presets !== "object" || Array.isArray(presets)) {
+    return {};
+  }
+  return presets;
+}
+
 function initializeUI({ ui, state, models, logger, storage, defaultChatPromptText = "" }) {
   updateApiKey(ui, state, storage, false);
   populatePromptPresets(ui, state.promptPresets);
@@ -201,6 +208,8 @@ function bindEvents({
   storage,
   generator,
   openImageFolder,
+  exportPromptLibrary,
+  importPromptLibrary,
   selection,
   app,
   core,
@@ -291,6 +300,78 @@ function bindEvents({
         core.showAlert("Failed to open image folder. Check log for details.");
       } finally {
         ui.openImageFolderButton.disabled = false;
+      }
+    });
+  }
+
+  if (ui.exportPromptLibraryButton && typeof exportPromptLibrary === "function") {
+    ui.exportPromptLibraryButton.addEventListener("click", async () => {
+      ui.exportPromptLibraryButton.disabled = true;
+      try {
+        const currentPresets = normalizePromptPresetMap(state.promptPresets);
+        const result = await exportPromptLibrary(currentPresets);
+        if (result?.cancelled) {
+          return;
+        }
+        if (typeof logLine === "function") {
+          logLine("Exported " + Object.keys(currentPresets).length + " prompt preset(s).");
+          if (result?.filePath) {
+            logLine("Prompt library exported to:\n" + result.filePath);
+          }
+        }
+      } catch (error) {
+        if (typeof logLine === "function") {
+          logLine("Failed to export prompt library: " + (error?.message || String(error)));
+        }
+        core.showAlert("Failed to export prompt library. Check log for details.");
+      } finally {
+        ui.exportPromptLibraryButton.disabled = false;
+      }
+    });
+  }
+
+  if (ui.importPromptLibraryButton && typeof importPromptLibrary === "function") {
+    ui.importPromptLibraryButton.addEventListener("click", async () => {
+      ui.importPromptLibraryButton.disabled = true;
+      try {
+        const result = await importPromptLibrary();
+        if (!result || result.cancelled) {
+          return;
+        }
+
+        const importedPresets = normalizePromptPresetMap(result.presets);
+        const importedKeys = Object.keys(importedPresets);
+        if (importedKeys.length === 0) {
+          throw new Error("No valid prompt presets found in selected file.");
+        }
+
+        const existingPresets = normalizePromptPresetMap(state.promptPresets);
+        const overwrittenCount = importedKeys.filter(key => Object.prototype.hasOwnProperty.call(existingPresets, key)).length;
+        state.promptPresets = {
+          ...existingPresets,
+          ...importedPresets
+        };
+        storage.savePromptPresets(localStorage, state.promptPresets);
+        populatePromptPresets(ui, state.promptPresets);
+        if (ui.promptPresetTextarea) {
+          ui.promptPresetTextarea.value = "";
+        }
+        if (ui.newPresetName) {
+          ui.newPresetName.value = "";
+        }
+        if (typeof logLine === "function") {
+          logLine("Imported " + importedKeys.length + " prompt preset(s) (" + overwrittenCount + " overwritten).");
+          if (result?.filePath) {
+            logLine("Prompt library imported from:\n" + result.filePath);
+          }
+        }
+      } catch (error) {
+        if (typeof logLine === "function") {
+          logLine("Failed to import prompt library: " + (error?.message || String(error)));
+        }
+        core.showAlert("Failed to import prompt library. Check log for details.");
+      } finally {
+        ui.importPromptLibraryButton.disabled = false;
       }
     });
   }

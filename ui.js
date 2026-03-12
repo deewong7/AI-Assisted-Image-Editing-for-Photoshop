@@ -58,6 +58,8 @@ function getUI() {
     showChatTabCheckbox: document.getElementById("showChatTab"),
     persistGeneratedImages: document.getElementById("persistGeneratedImages"),
     enableBatchGeneration: document.getElementById("enableBatchGeneration"),
+    exportPromptLibraryButton: document.getElementById("exportPromptLibrary"),
+    importPromptLibraryButton: document.getElementById("importPromptLibrary"),
     enableCritiquePromptEdit: document.getElementById("enableCritiquePromptEdit"),
     openImageFolderButton: document.getElementById("openImageFolder"),
     adaptiveRatioSetting: document.getElementById("adaptiveRatioSetting"),
@@ -186,13 +188,20 @@ function renderModelUI(ui, state, models, logLine) {
 
 function populatePromptPresets(ui, promptPresets) {
   if (!ui.promptPicker || !promptPresets) return;
+  if ("innerHTML" in ui.promptPicker) {
+    ui.promptPicker.innerHTML = "";
+  }
 
   Object.keys(promptPresets).forEach(key => {
-    const item = document.createElement("sp-menu-item");
+    const item = typeof document !== "undefined" && typeof document.createElement === "function"
+      ? document.createElement("sp-menu-item")
+      : {};
     item.name = key;
     item.textContent = key;
     item.value = promptPresets[key];
-    ui.promptPicker.appendChild(item);
+    if (typeof ui.promptPicker.appendChild === "function") {
+      ui.promptPicker.appendChild(item);
+    }
   });
 }
 
