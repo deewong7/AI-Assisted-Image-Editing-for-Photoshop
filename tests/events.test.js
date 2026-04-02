@@ -112,20 +112,29 @@ function createMenuButton(page, initialStyle = {}) {
   };
 }
 
+function createSavedPrefs(overrides = {}) {
+  return {
+    persistGeneratedImages: false,
+    enableBatchGeneration: false,
+    showChatTab: true,
+    maxWaitingTimeSeconds: 120,
+    maxBatchCount: 8,
+    enableGeneratedGroupColorLabel: false,
+    generatedGroupColorLabel: "blue",
+    enableDeferredBatchRecovery: false,
+    ...overrides
+  };
+}
+
 function createBaseArgs(ui, defaultChatPromptText = "DEFAULT CHAT PROMPT") {
   return {
     ui,
     state: {
       apiKey: {},
       promptPresets: {},
-      persistGeneratedImages: false,
-      enableBatchGeneration: false,
-      showChatTab: true,
-      maxWaitingTimeSeconds: 120,
-      maxBatchCount: 8,
-      enableGeneratedGroupColorLabel: false,
-      generatedGroupColorLabel: "blue",
-      batchCount: 1
+      ...createSavedPrefs(),
+      batchCount: 1,
+      pendingBatchPlacements: []
     },
     models: {},
     logger: {
@@ -244,15 +253,50 @@ test.describe("generated image persistence preference", () => {
     ui.persistGeneratedImages.click();
 
     assert.equal(args.state.persistGeneratedImages, true);
-    assert.deepEqual(savedPrefs, [{
-      persistGeneratedImages: true,
-      enableBatchGeneration: false,
-      showChatTab: true,
-      maxWaitingTimeSeconds: 120,
-      maxBatchCount: 8,
-      enableGeneratedGroupColorLabel: false,
-      generatedGroupColorLabel: "blue"
-    }]);
+    assert.deepEqual(savedPrefs, [createSavedPrefs({
+      persistGeneratedImages: true
+    })]);
+  });
+});
+
+test.describe("deferred batch recovery preference", () => {
+  test("initializeUI reflects saved enableDeferredBatchRecovery state", () => {
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      enableDeferredBatchRecovery: createCheckbox(false)
+    };
+    const args = createBaseArgs(ui);
+    args.state.enableDeferredBatchRecovery = true;
+
+    initializeUI(args);
+
+    assert.equal(ui.enableDeferredBatchRecovery.checked, true);
+  });
+
+  test("clicking enableDeferredBatchRecovery updates state and saves preference", () => {
+    const savedPrefs = [];
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      enableDeferredBatchRecovery: createCheckbox(false)
+    };
+    const args = createBaseArgs(ui);
+    args.storage.savePluginPrefs = (_storage, prefs) => {
+      savedPrefs.push(prefs);
+    };
+    global.localStorage = {};
+
+    initializeUI(args);
+    bindEvents(args);
+
+    ui.enableDeferredBatchRecovery.checked = true;
+    ui.enableDeferredBatchRecovery.click();
+
+    assert.equal(args.state.enableDeferredBatchRecovery, true);
+    assert.deepEqual(savedPrefs, [createSavedPrefs({
+      enableDeferredBatchRecovery: true
+    })]);
   });
 });
 
@@ -303,15 +347,7 @@ test.describe("batch generation preference", () => {
     assert.equal(args.state.batchCount, 1);
     assert.equal(ui.batchCountControl.style.display, "none");
     assert.equal(ui.batchCountSlider.value, "1");
-    assert.deepEqual(savedPrefs, [{
-      persistGeneratedImages: false,
-      enableBatchGeneration: false,
-      showChatTab: true,
-      maxWaitingTimeSeconds: 120,
-      maxBatchCount: 8,
-      enableGeneratedGroupColorLabel: false,
-      generatedGroupColorLabel: "blue"
-    }]);
+    assert.deepEqual(savedPrefs, [createSavedPrefs()]);
   });
 });
 
@@ -351,15 +387,9 @@ test.describe("max waiting time preference", () => {
 
     assert.equal(args.state.maxWaitingTimeSeconds, 300);
     assert.equal(ui.maxWaitingTimeSlider.value, "300");
-    assert.deepEqual(savedPrefs, [{
-      persistGeneratedImages: false,
-      enableBatchGeneration: false,
-      showChatTab: true,
-      maxWaitingTimeSeconds: 300,
-      maxBatchCount: 8,
-      enableGeneratedGroupColorLabel: false,
-      generatedGroupColorLabel: "blue"
-    }]);
+    assert.deepEqual(savedPrefs, [createSavedPrefs({
+      maxWaitingTimeSeconds: 300
+    })]);
   });
 });
 
@@ -410,15 +440,10 @@ test.describe("max batch count preference", () => {
     assert.equal(args.state.batchCount, 3);
     assert.equal(ui.batchCountSlider.max, "3");
     assert.equal(ui.batchCountSlider.value, "3");
-    assert.deepEqual(savedPrefs, [{
-      persistGeneratedImages: false,
+    assert.deepEqual(savedPrefs, [createSavedPrefs({
       enableBatchGeneration: true,
-      showChatTab: true,
-      maxWaitingTimeSeconds: 120,
-      maxBatchCount: 3,
-      enableGeneratedGroupColorLabel: false,
-      generatedGroupColorLabel: "blue"
-    }]);
+      maxBatchCount: 3
+    })]);
   });
 });
 
@@ -464,15 +489,10 @@ test.describe("generated batch group color preference", () => {
 
     assert.equal(args.state.enableGeneratedGroupColorLabel, true);
     assert.equal(args.state.generatedGroupColorLabel, "red");
-    assert.deepEqual(savedPrefs[savedPrefs.length - 1], {
-      persistGeneratedImages: false,
-      enableBatchGeneration: false,
-      showChatTab: true,
-      maxWaitingTimeSeconds: 120,
-      maxBatchCount: 8,
+    assert.deepEqual(savedPrefs[savedPrefs.length - 1], createSavedPrefs({
       enableGeneratedGroupColorLabel: true,
       generatedGroupColorLabel: "red"
-    });
+    }));
   });
 });
 
@@ -556,15 +576,9 @@ test.describe("chat tab preference", () => {
     assert.equal(ui.pages[1].hidden, true);
     assert.equal(mainMenu.style.textDecoration, "underline");
     assert.equal(chatMenu.style.textDecoration, "none");
-    assert.deepEqual(savedPrefs, [{
-      persistGeneratedImages: false,
-      enableBatchGeneration: false,
-      showChatTab: false,
-      maxWaitingTimeSeconds: 120,
-      maxBatchCount: 8,
-      enableGeneratedGroupColorLabel: false,
-      generatedGroupColorLabel: "blue"
-    }]);
+    assert.deepEqual(savedPrefs, [createSavedPrefs({
+      showChatTab: false
+    })]);
   });
 });
 

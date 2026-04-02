@@ -55,6 +55,7 @@ function getUI() {
     maxBatchCountSlider: document.getElementById("maxBatchCountSlider"),
     enableGeneratedGroupColorLabel: document.getElementById("enableGeneratedGroupColorLabel"),
     generatedGroupColorLabel: document.getElementById("generatedGroupColorLabel"),
+    enableDeferredBatchRecovery: document.getElementById("enableDeferredBatchRecovery"),
     showChatTabCheckbox: document.getElementById("showChatTab"),
     persistGeneratedImages: document.getElementById("persistGeneratedImages"),
     enableBatchGeneration: document.getElementById("enableBatchGeneration"),
@@ -77,7 +78,8 @@ function getUI() {
     referenceImage: document.getElementById("referenceImage"),
     refImagePreview: document.getElementById("refImagePreview"),
     refImagePreviewDiv: document.getElementById("refImagePreviewDiv"),
-    refCount: document.getElementById("refCount")
+    refCount: document.getElementById("refCount"),
+    deferredBatchList: document.getElementById("deferredBatchList")
   };
 }
 
@@ -279,6 +281,51 @@ function renderBatchProgress(ui, completed, total) {
   ui.jobCount.textContent = `Batch Progress: ${safeCompleted}/${total}`;
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderDeferredBatchPlacements(ui, placements) {
+  if (!ui.deferredBatchList) {
+    return;
+  }
+
+  const pendingPlacements = Array.isArray(placements)
+    ? placements.filter(Boolean)
+    : [];
+
+  if (pendingPlacements.length === 0) {
+    ui.deferredBatchList.style.display = "none";
+    ui.deferredBatchList.innerHTML = "";
+    return;
+  }
+
+  ui.deferredBatchList.style.display = "";
+  ui.deferredBatchList.innerHTML = pendingPlacements.map(entry => {
+    const docName = escapeHtml(entry.docName || "Unknown Document");
+    const successCount = Number(entry.successCount) || 0;
+    const requestedCount = Math.max(Number(entry.requestedCount) || 0, successCount);
+    const batchId = escapeHtml(entry.id || "");
+    return `
+      <div class="deferredBatchItem">
+        <sp-action-button
+          quiet
+          class="deferredBatchInsertButton"
+          data-batch-id="${batchId}"
+          title="Insert generated batch into original document"
+          aria-label="Insert generated batch into original document"
+        >⤓</sp-action-button>
+        <span class="deferredBatchText">${docName} ${successCount}/${requestedCount}</span>
+      </div>
+    `;
+  }).join("");
+}
+
 module.exports = {
   getUI,
   renderModelUI,
@@ -290,5 +337,6 @@ module.exports = {
   appendReferencePreview,
   clearReferencePreview,
   renderJobCount,
-  renderBatchProgress
+  renderBatchProgress,
+  renderDeferredBatchPlacements
 };

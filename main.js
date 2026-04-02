@@ -12,6 +12,7 @@ const { createPlacer } = require("./photoshop/place");
 const { createLogger } = require("./log");
 const storage = require("./storage");
 const { getUI } = require("./ui");
+const { createDeferredBatchManager } = require("./deferred-batches");
 const {
   SEEDREAM,
   SEEDREAM_5,
@@ -32,13 +33,10 @@ if (ui.modelPicker) {
   ui.modelPicker.value = NANOBANANA_PRO;
 }
 
+const logger = createLogger(ui);
 const apiKey = storage.loadApiKeys(localStorage, DEFAULT_API_KEYS);
 const promptPresets = storage.loadPromptPresets(localStorage, DEFAULT_PROMPT_PRESETS);
 const pluginPrefs = storage.loadPluginPrefs(localStorage, DEFAULT_PLUGIN_PREFS);
-
-const state = createState({ ui, apiKey, promptPresets, pluginPrefs });
-
-const logger = createLogger(ui);
 const selection = createSelection({ app, constants, core, imaging, logLine: logger.logLine });
 const placer = createPlacer({
   app,
@@ -48,6 +46,21 @@ const placer = createPlacer({
   imaging,
   base64ToArrayBuffer: utils.base64ToArrayBuffer,
   logLine: logger.logLine
+});
+const deferredBatchManager = createDeferredBatchManager({
+  fs,
+  app,
+  placer,
+  storageBackend: localStorage,
+  logLine: logger.logLine
+});
+
+const state = createState({
+  ui,
+  apiKey,
+  promptPresets,
+  pluginPrefs,
+  pendingBatchPlacements: deferredBatchManager.getPendingBatches()
 });
 
 const generator = createGenerator({
@@ -59,6 +72,7 @@ const generator = createGenerator({
   placer,
   generateWithProvider,
   critiqueWithProvider,
+  deferredBatchManager,
   logLine: logger.logLine,
   utils,
   seedreamModelId: [SEEDREAM, SEEDREAM_5],
@@ -146,5 +160,6 @@ bindEvents({
   app,
   core,
   defaultPromptText: DEFAULT_PROMPT_PRESETS.default,
-  defaultChatPromptText: DEFAULT_CHAT_PROMPT
+  defaultChatPromptText: DEFAULT_CHAT_PROMPT,
+  deferredBatchManager
 });

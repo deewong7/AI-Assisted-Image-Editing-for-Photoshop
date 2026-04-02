@@ -19,7 +19,8 @@ const DEFAULT_PLUGIN_PREFS = Object.freeze({
   maxWaitingTimeSeconds: 120,
   maxBatchCount: DEFAULT_MAX_BATCH_COUNT,
   enableGeneratedGroupColorLabel: false,
-  generatedGroupColorLabel: DEFAULT_GROUP_COLOR_LABEL
+  generatedGroupColorLabel: DEFAULT_GROUP_COLOR_LABEL,
+  enableDeferredBatchRecovery: false
 });
 
 const DEFAULT_PROMPT_PRESETS = {
@@ -124,7 +125,7 @@ Top3Strengths=用1,2,3逗号分隔
 Top3Issues=用1,2,3逗号分隔
 NextShotPlan=下一次拍摄三步方案，用1,2,3逗号分隔`;
 
-function createState({ ui, apiKey, promptPresets, pluginPrefs } = {}) {
+function createState({ ui, apiKey, promptPresets, pluginPrefs, pendingBatchPlacements } = {}) {
   const modelValue = ui?.modelPicker?.value ?? NANOBANANA_PRO;
   const resolutionValue = ui?.resolutionPicker?.value ?? "2K";
   const aspectRatioValue = ui?.aspectRatioPicker?.value ?? "default";
@@ -153,6 +154,8 @@ function createState({ ui, apiKey, promptPresets, pluginPrefs } = {}) {
     maxBatchCount,
     enableGeneratedGroupColorLabel: prefs.enableGeneratedGroupColorLabel === true,
     generatedGroupColorLabel: groupColorLabel,
+    enableDeferredBatchRecovery: prefs.enableDeferredBatchRecovery === true,
+    pendingBatchPlacements: Array.isArray(pendingBatchPlacements) ? [...pendingBatchPlacements] : [],
     textToImage: false,
     currentJobCount: 0,
     apiKey: apiKey || { ...DEFAULT_API_KEYS },

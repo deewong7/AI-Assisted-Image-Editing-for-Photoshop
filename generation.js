@@ -1,5 +1,11 @@
 const { getGenerationBackendName } = require("./providers/index.js")
-const { setImagePreview, setChatImagePreview, renderJobCount, renderBatchProgress } = require('./ui.js')
+const {
+  setImagePreview,
+  setChatImagePreview,
+  renderJobCount,
+  renderBatchProgress,
+  renderDeferredBatchPlacements
+} = require('./ui.js')
 const { clampMaxBatchCount, clampBatchCount } = require("./limits")
 function createGenerator({
   app,
@@ -10,6 +16,7 @@ function createGenerator({
   placer,
   generateWithProvider,
   critiqueWithProvider,
+  deferredBatchManager,
   logLine,
   utils,
   seedreamModelId,
@@ -71,6 +78,19 @@ function createGenerator({
 
   function clampMaxWaitingTimeSeconds(value) {
     return Math.min(300, Math.max(1, Number(value) || 120))
+  }
+
+  function getDocumentSnapshot(doc) {
+    const docId = doc?.id ?? null
+    const docName = typeof doc?.title === "string" && doc.title.trim()
+      ? doc.title.trim()
+      : typeof doc?.name === "string" && doc.name.trim()
+        ? doc.name.trim()
+        : (docId !== null ? `Document ${docId}` : "Unknown Document")
+    return {
+      id: docId,
+      name: docName
+    }
   }
 
   function isAbortError(error) {
@@ -276,6 +296,38 @@ function createGenerator({
     }
   }
 
+  async function deferBatchPlacement(reason, generatedImages, requestDocument, bounds, targetModel, placementOptions, requestedCount) {
+    if (state.enableDeferredBatchRecovery !== true ||
+      !deferredBatchManager ||
+      typeof deferredBatchManager.deferBatch !== "function") {
+      return false
+    }
+
+    const deferredEntry = await deferredBatchManager.deferBatch({
+      images: generatedImages,
+      requestDocument,
+      bounds,
+      targetModel,
+      placementOptions,
+      requestedCount,
+      successCount: generatedImages.length
+    })
+
+    state.pendingBatchPlacements = typeof deferredBatchManager.getPendingBatches === "function"
+      ? deferredBatchManager.getPendingBatches()
+      : [...(state.pendingBatchPlacements || []), deferredEntry]
+    renderDeferredBatchPlacements(ui, state.pendingBatchPlacements)
+
+    if (typeof logLine === "function") {
+      logLine(
+        `Saved batch for later insertion to ${deferredEntry.docName} ` +
+        `(${deferredEntry.successCount}/${deferredEntry.requestedCount}) because ${reason}.`
+      )
+    }
+
+    return true
+  }
+
   function createBatchTask(targetModel, requestOptions, base64Data, batchNumber, totalBatchCount, onSettled, runState) {
     const controller = createRunController(runState)
     const signal = controller?.signal
@@ -326,6 +378,7 @@ function createGenerator({
       return
     }
 
+    const requestDocument = getDocumentSnapshot(app.activeDocument)
     const selectionData = app.activeDocument.selection
     if (!selectionData?.bounds) {
       core.showAlert("No Selection.")
@@ -528,6 +581,26 @@ function createGenerator({
         return
       }
 
+      if (state.enableDeferredBatchRecovery === true) {
+        if (typeof logLine === "function") {
+          logLine(
+            generatedImages.length > 1
+              ? "Queueing generated image batch for manual insert, count: " + generatedImages.length
+              : "Queueing generated image for manual insert."
+          )
+        }
+        await deferBatchPlacement(
+          "manual insert mode is enabled",
+          generatedImages,
+          requestDocument,
+          bounds,
+          targetModel,
+          placementOptions,
+          targetBatchCount
+        )
+        return
+      }
+
       if (generatedImages.length > 1) {
         console.log("placing generated image batch to document, count:", generatedImages.length)
         if (typeof logLine === "function") {
@@ -540,16 +613,56 @@ function createGenerator({
         }
       }
 
-      if (targetBatchCount > 1 && typeof placer.placeBatchToCurrentDocAtSelection === "function") {
-        await placer.placeBatchToCurrentDocAtSelection(generatedImages, bounds, targetModel, placementOptions)
-      } else if (generatedImages.length === 1) {
-        await placer.placeToCurrentDocAtSelection(generatedImages[0], bounds, targetModel, placementOptions)
-      } else if (typeof placer.placeBatchToCurrentDocAtSelection === "function") {
-        await placer.placeBatchToCurrentDocAtSelection(generatedImages, bounds, targetModel, placementOptions)
-      } else {
-        for (const generatedBase64 of generatedImages) {
-          await placer.placeToCurrentDocAtSelection(generatedBase64, bounds, targetModel, placementOptions)
+      const currentDocumentId = app.activeDocument?.id ?? null
+      if (requestDocument.id !== null && currentDocumentId !== requestDocument.id) {
+        const message = `Generated batch finished, but active document no longer matches ${requestDocument.name}.`
+        const deferred = await deferBatchPlacement(
+          "the active document changed before placement",
+          generatedImages,
+          requestDocument,
+          bounds,
+          targetModel,
+          placementOptions,
+          targetBatchCount
+        )
+        if (!deferred) {
+          if (typeof logLine === "function") {
+            logLine(message + " Placement skipped.")
+          }
+          core.showAlert("Generated batch finished, but the active document changed. Placement skipped.")
         }
+        return
+      }
+
+      try {
+        if (targetBatchCount > 1 && typeof placer.placeBatchToCurrentDocAtSelection === "function") {
+          await placer.placeBatchToCurrentDocAtSelection(generatedImages, bounds, targetModel, placementOptions)
+        } else if (generatedImages.length === 1) {
+          await placer.placeToCurrentDocAtSelection(generatedImages[0], bounds, targetModel, placementOptions)
+        } else if (typeof placer.placeBatchToCurrentDocAtSelection === "function") {
+          await placer.placeBatchToCurrentDocAtSelection(generatedImages, bounds, targetModel, placementOptions)
+        } else {
+          for (const generatedBase64 of generatedImages) {
+            await placer.placeToCurrentDocAtSelection(generatedBase64, bounds, targetModel, placementOptions)
+          }
+        }
+      } catch (error) {
+        if (error?.code === "HOST_MODAL_STATE") {
+          const deferred = await deferBatchPlacement(
+            "Photoshop is in modal state",
+            generatedImages,
+            requestDocument,
+            bounds,
+            targetModel,
+            placementOptions,
+            targetBatchCount
+          )
+          if (!deferred && typeof logLine === "function") {
+            logLine(error.message || String(error))
+          }
+          return
+        }
+        throw error
       }
     } catch (error) {
       console.error("Error placing generated image to document: " + error)

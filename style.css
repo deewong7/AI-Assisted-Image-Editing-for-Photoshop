@@ -99,6 +99,32 @@ textarea {
   width: 219px;
 }
 
+#deferredBatchList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 219px;
+}
+
+.deferredBatchItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.deferredBatchInsertButton {
+  min-width: 24px;
+  width: 24px;
+  font-size: 15px;
+}
+
+.deferredBatchText {
+  font-size: 11px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
 .right {
   display: flex;
   /* width: 220px; */

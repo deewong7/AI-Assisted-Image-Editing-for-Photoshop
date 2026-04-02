@@ -3,7 +3,8 @@ const {
   populatePromptPresets,
   clearImagePreview,
   appendReferencePreview,
-  clearReferencePreview
+  clearReferencePreview,
+  renderDeferredBatchPlacements
 } = require("./ui");
 const { DEFAULT_MAX_BATCH_COUNT, clampMaxBatchCount, clampBatchCount } = require("./limits");
 const { normalizeGroupColorLabel } = require("./group-color-labels");
@@ -159,7 +160,8 @@ function savePluginPrefsState(storage, state) {
     maxWaitingTimeSeconds: normalizeMaxWaitingTimeSeconds(state.maxWaitingTimeSeconds),
     maxBatchCount,
     enableGeneratedGroupColorLabel: state.enableGeneratedGroupColorLabel === true,
-    generatedGroupColorLabel
+    generatedGroupColorLabel,
+    enableDeferredBatchRecovery: state.enableDeferredBatchRecovery === true
   });
 }
 
@@ -183,6 +185,9 @@ function initializeUI({ ui, state, models, logger, storage, defaultChatPromptTex
   if (ui.persistGeneratedImages) {
     ui.persistGeneratedImages.checked = state.persistGeneratedImages === true;
   }
+  if (ui.enableDeferredBatchRecovery) {
+    ui.enableDeferredBatchRecovery.checked = state.enableDeferredBatchRecovery === true;
+  }
   state.maxWaitingTimeSeconds = normalizeMaxWaitingTimeSeconds(state.maxWaitingTimeSeconds);
   if (ui.maxWaitingTimeSlider) {
     ui.maxWaitingTimeSlider.value = String(state.maxWaitingTimeSeconds);
@@ -198,6 +203,20 @@ function initializeUI({ ui, state, models, logger, storage, defaultChatPromptTex
   applyBatchGenerationState(ui, state);
   applyChatTabVisibility(ui, state);
   applyCritiquePromptEditState(ui, defaultChatPromptText);
+  renderDeferredBatchPlacements(ui, state.pendingBatchPlacements);
+}
+
+function getDeferredBatchIdFromTarget(target) {
+  if (!target) {
+    return "";
+  }
+  if (target.dataset?.batchId) {
+    return target.dataset.batchId;
+  }
+  if (typeof target.closest === "function") {
+    return target.closest("[data-batch-id]")?.dataset?.batchId || "";
+  }
+  return "";
 }
 
 function bindEvents({
@@ -214,7 +233,8 @@ function bindEvents({
   app,
   core,
   defaultPromptText,
-  defaultChatPromptText = ""
+  defaultChatPromptText = "",
+  deferredBatchManager
 }) {
   const logLine = logger.logLine;
 
@@ -564,6 +584,13 @@ function bindEvents({
     });
   }
 
+  if (ui.enableDeferredBatchRecovery) {
+    ui.enableDeferredBatchRecovery.addEventListener("click", (e) => {
+      state.enableDeferredBatchRecovery = e.target.checked;
+      savePluginPrefsState(storage, state);
+    });
+  }
+
   if (ui.enableBatchGeneration) {
     ui.enableBatchGeneration.addEventListener("click", (e) => {
       state.enableBatchGeneration = e.target.checked;
@@ -748,6 +775,61 @@ function bindEvents({
     ui.hidePromptPreset.addEventListener("click", (e) => {
       if (ui.promptManage) {
         ui.promptManage.style.display = e.target.checked ? "none" : "";
+      }
+    });
+  }
+
+  if (ui.deferredBatchList && deferredBatchManager && typeof deferredBatchManager.recoverBatch === "function") {
+    ui.deferredBatchList.addEventListener("click", async (e) => {
+      const batchId = getDeferredBatchIdFromTarget(e.target);
+      if (!batchId) {
+        return;
+      }
+
+      try {
+        const result = await deferredBatchManager.recoverBatch(batchId);
+        state.pendingBatchPlacements = typeof deferredBatchManager.getPendingBatches === "function"
+          ? deferredBatchManager.getPendingBatches()
+          : state.pendingBatchPlacements;
+        renderDeferredBatchPlacements(ui, state.pendingBatchPlacements);
+
+        if (result?.status === "placed") {
+          if (typeof logLine === "function") {
+            logLine(`Inserted deferred batch into ${result.entry.docName}.`);
+          }
+          return;
+        }
+
+        if (result?.status === "document_mismatch") {
+          const message = `Open ${result.entry.docName} and try again. Current document does not match the original request.`;
+          if (typeof logLine === "function") {
+            logLine(message);
+          }
+          core.showAlert(message);
+          return;
+        }
+
+        if (result?.status === "host_modal_state") {
+          const message = "Photoshop is still in modal state. Deferred batch was kept for later insertion.";
+          if (typeof logLine === "function") {
+            logLine(message);
+          }
+          core.showAlert(message);
+          return;
+        }
+
+        if (result?.status === "missing_payload") {
+          const message = "Deferred batch payload is missing and was removed from the queue.";
+          if (typeof logLine === "function") {
+            logLine(message);
+          }
+          core.showAlert(message);
+        }
+      } catch (error) {
+        if (typeof logLine === "function") {
+          logLine("Failed to insert deferred batch: " + (error?.message || String(error)));
+        }
+        core.showAlert("Failed to insert deferred batch. Check log for details.");
       }
     });
   }

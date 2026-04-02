@@ -935,6 +935,306 @@ test.describe("createGenerator", () => {
     assert.equal(logs.some(line => line.includes("Job finished") && line.includes("gemini-3-pro-image-preview")), true);
   });
 
+  test("queues finished results instead of auto-placing when manual insert mode is enabled", async () => {
+    const deferredCalls = [];
+    let placementCalls = 0;
+    const pendingEntries = [{
+      id: "deferred-manual-1",
+      docName: "Cover.psd",
+      successCount: 1,
+      requestedCount: 1
+    }];
+    const ui = {
+      testCheckbox: { checked: false },
+      promptInput: { value: "test prompt" },
+      generateButton: { disabled: false, innerText: "Generate", style: {} },
+      allowNSFW: { checked: false },
+      temperature: { value: "1.0" },
+      topP: { value: "0.90" },
+      imageToProcess: {},
+      deferredBatchList: {
+        style: { display: "none" },
+        innerHTML: ""
+      }
+    };
+
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          id: 10,
+          name: "Cover.psd",
+          selection: {
+            bounds: {
+              left: 0,
+              right: 100,
+              top: 0,
+              bottom: 100,
+              width: 100,
+              height: 100
+            }
+          }
+        }
+      },
+      core: {
+        showAlert: () => {}
+      },
+      ui,
+      state: {
+        selectedModel: "gemini-3-pro-image-preview",
+        aspectRatio: "1:1",
+        textToImage: false,
+        imageArray: [],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: false,
+        apiKey: { "NanoBananaPro-api-key": "KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: false,
+        enableDeferredBatchRecovery: true,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {
+          placementCalls += 1;
+        }
+      },
+      generateWithProvider: async () => "generated-b64",
+      critiqueWithProvider: async function* () {},
+      deferredBatchManager: {
+        async deferBatch(args) {
+          deferredCalls.push(args);
+          return pendingEntries[0];
+        },
+        getPendingBatches() {
+          return pendingEntries;
+        }
+      },
+      logLine: () => {},
+      utils: {
+        pickTier: () => "2K"
+      },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image",
+      nanoBananaModelId: "gemini-3-pro-image-preview"
+    });
+
+    await generator.generate();
+
+    assert.equal(placementCalls, 0);
+    assert.equal(deferredCalls.length, 1);
+    assert.equal(deferredCalls[0].requestDocument.id, 10);
+    assert.equal(ui.deferredBatchList.style.display, "");
+    assert.match(ui.deferredBatchList.innerHTML, /Cover\.psd/);
+  });
+
+  test("defers generated images when the active document changes before placement", async () => {
+    const deferredCalls = [];
+    let placementCalls = 0;
+    const pendingEntries = [{
+      id: "deferred-1",
+      docName: "Cover.psd",
+      successCount: 1,
+      requestedCount: 1
+    }];
+    const bounds = {
+      left: 0,
+      right: 100,
+      top: 0,
+      bottom: 100,
+      width: 100,
+      height: 100
+    };
+    const app = {
+      activeDocument: {
+        id: 10,
+        name: "Cover.psd",
+        selection: { bounds }
+      }
+    };
+    const ui = {
+      testCheckbox: { checked: false },
+      promptInput: { value: "test prompt" },
+      generateButton: { disabled: false, innerText: "Generate", style: {} },
+      allowNSFW: { checked: false },
+      temperature: { value: "1.0" },
+      topP: { value: "0.90" },
+      imageToProcess: {},
+      deferredBatchList: {
+        style: { display: "none" },
+        innerHTML: ""
+      }
+    };
+
+    const generator = createGenerator({
+      app,
+      core: {
+        showAlert: () => {}
+      },
+      ui,
+      state: {
+        selectedModel: "gemini-3-pro-image-preview",
+        aspectRatio: "1:1",
+        textToImage: false,
+        imageArray: [],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: false,
+        apiKey: { "NanoBananaPro-api-key": "KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: false,
+        enableDeferredBatchRecovery: true,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {
+          placementCalls += 1;
+        }
+      },
+      generateWithProvider: async () => {
+        app.activeDocument = {
+          ...app.activeDocument,
+          id: 11,
+          name: "Other.psd"
+        };
+        return "generated-b64";
+      },
+      critiqueWithProvider: async function* () {},
+      deferredBatchManager: {
+        async deferBatch(args) {
+          deferredCalls.push(args);
+          return pendingEntries[0];
+        },
+        getPendingBatches() {
+          return pendingEntries;
+        }
+      },
+      logLine: () => {},
+      utils: {
+        pickTier: () => "2K"
+      },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image",
+      nanoBananaModelId: "gemini-3-pro-image-preview"
+    });
+
+    await generator.generate();
+
+    assert.equal(placementCalls, 0);
+    assert.equal(deferredCalls.length, 1);
+    assert.equal(deferredCalls[0].requestDocument.id, 10);
+    assert.equal(deferredCalls[0].requestDocument.name, "Cover.psd");
+    assert.equal(ui.deferredBatchList.style.display, "");
+    assert.match(ui.deferredBatchList.innerHTML, /Cover\.psd/);
+    assert.match(ui.deferredBatchList.innerHTML, /1\/1/);
+  });
+
+  test("defers generated images when placement is blocked by modal state", async () => {
+    const deferredCalls = [];
+    const pendingEntries = [{
+      id: "deferred-2",
+      docName: "Cover.psd",
+      successCount: 1,
+      requestedCount: 1
+    }];
+    const modalError = new Error("blocked");
+    modalError.code = "HOST_MODAL_STATE";
+    const ui = {
+      testCheckbox: { checked: false },
+      promptInput: { value: "test prompt" },
+      generateButton: { disabled: false, innerText: "Generate", style: {} },
+      allowNSFW: { checked: false },
+      temperature: { value: "1.0" },
+      topP: { value: "0.90" },
+      imageToProcess: {},
+      deferredBatchList: {
+        style: { display: "none" },
+        innerHTML: ""
+      }
+    };
+
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          id: 10,
+          name: "Cover.psd",
+          selection: {
+            bounds: {
+              left: 0,
+              right: 100,
+              top: 0,
+              bottom: 100,
+              width: 100,
+              height: 100
+            }
+          }
+        }
+      },
+      core: {
+        showAlert: () => {}
+      },
+      ui,
+      state: {
+        selectedModel: "gemini-3-pro-image-preview",
+        aspectRatio: "1:1",
+        textToImage: false,
+        imageArray: [],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: false,
+        apiKey: { "NanoBananaPro-api-key": "KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: false,
+        enableDeferredBatchRecovery: true,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {
+          throw modalError;
+        }
+      },
+      generateWithProvider: async () => "generated-b64",
+      critiqueWithProvider: async function* () {},
+      deferredBatchManager: {
+        async deferBatch(args) {
+          deferredCalls.push(args);
+          return pendingEntries[0];
+        },
+        getPendingBatches() {
+          return pendingEntries;
+        }
+      },
+      logLine: () => {},
+      utils: {
+        pickTier: () => "2K"
+      },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image",
+      nanoBananaModelId: "gemini-3-pro-image-preview"
+    });
+
+    await generator.generate();
+
+    assert.equal(deferredCalls.length, 1);
+    assert.equal(deferredCalls[0].requestDocument.id, 10);
+    assert.equal(ui.deferredBatchList.style.display, "");
+    assert.match(ui.deferredBatchList.innerHTML, /Cover\.psd/);
+  });
+
   test("critique uses selection bounds when selection exists", async () => {
     let capturedBounds;
     const ui = {

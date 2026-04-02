@@ -198,6 +198,31 @@ test.describe("createPlacer output folder selection", () => {
     assert.equal(calls.writes[0].byteLength, 3);
   });
 
+  test("throws a recoverable modal-state error when placement is blocked", async () => {
+    const { fs, calls } = createFsHarness();
+    const placer = createPlacer({
+      app: {},
+      core: {
+        async executeAsModal() {
+          throw new Error("host is in modal state");
+        }
+      },
+      constants: {},
+      fs,
+      imaging: {},
+      base64ToArrayBuffer: decodeBase64,
+      logLine: () => {}
+    });
+
+    await assert.rejects(
+      () => placer.placeToCurrentDocAtSelection("QUJD", bounds, "model", {
+        persistGeneratedImages: false
+      }),
+      error => error?.code === "HOST_MODAL_STATE"
+    );
+    assert.equal(calls.writes.length, 1);
+  });
+
   test("batch placement writes each image and groups the generated layers", async () => {
     const { placer, calls, groupCalls } = createPlacementHarness();
 
