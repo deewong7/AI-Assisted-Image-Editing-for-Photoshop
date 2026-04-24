@@ -108,7 +108,7 @@ textarea {
 
 .deferredBatchItem {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   min-height: 24px;
 }
@@ -117,12 +117,16 @@ textarea {
   min-width: 24px;
   width: 24px;
   font-size: 15px;
+  flex: 0 0 auto;
+  margin-top: 1px;
 }
 
 .deferredBatchText {
-  font-size: 11px;
-  line-height: 1.4;
+  display: block;
+  flex: 1;
+  min-width: 0;
   word-break: break-word;
+  white-space: normal;
 }
 
 .right {

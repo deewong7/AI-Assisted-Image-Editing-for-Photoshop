@@ -320,7 +320,7 @@ function renderDeferredBatchPlacements(ui, placements) {
           title="Insert generated batch into original document"
           aria-label="Insert generated batch into original document"
         >⤓</sp-action-button>
-        <span class="deferredBatchText">${docName} ${successCount}/${requestedCount}</span>
+        <sp-label class="deferredBatchText">${docName} ${successCount}/${requestedCount}</sp-label>
       </div>
     `;
   }).join("");

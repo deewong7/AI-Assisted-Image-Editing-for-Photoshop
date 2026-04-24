@@ -203,6 +203,7 @@ function createGenerator({
     }
 
     runState.cancelRequested = true
+    runState.wasCanceled = true
     const unfinishedControllers = Array.from(runState.controllers)
     unfinishedControllers.forEach(controller => {
       try {
@@ -246,7 +247,13 @@ function createGenerator({
     return backendName ? `${baseMessage} via ${backendName}` : baseMessage
   }
 
-  function createRunSummaryMessage(total, successCount, elapsedSeconds, targetModel) {
+  function createRunSummaryMessage(total, successCount, elapsedSeconds, targetModel, cancelled = false) {
+    if (cancelled) {
+      return total <= 1
+        ? `Job canceled after ${elapsedSeconds} seconds - ${targetModel}`
+        : `Batch canceled after ${elapsedSeconds} seconds - ${targetModel}`
+    }
+
     if (total <= 1) {
       const status = successCount === 1 ? "finished" : "failed"
       return `Job ${status} after ${elapsedSeconds} seconds - ${targetModel}`
@@ -264,6 +271,10 @@ function createGenerator({
   }
 
   async function generateSingleImage(targetModel, requestOptions, base64Data, signal) {
+    if (signal?.aborted) {
+      throw createAbortError()
+    }
+
     if (targetModel === "localtest") {
       if (signal?.aborted) {
         throw createAbortError()
@@ -296,8 +307,8 @@ function createGenerator({
     }
   }
 
-  async function deferBatchPlacement(reason, generatedImages, requestDocument, bounds, targetModel, placementOptions, requestedCount) {
-    if (state.enableDeferredBatchRecovery !== true ||
+  async function deferBatchPlacement(reason, generatedImages, requestDocument, bounds, targetModel, placementOptions, requestedCount, force = false) {
+    if ((!force && state.enableDeferredBatchRecovery !== true) ||
       !deferredBatchManager ||
       typeof deferredBatchManager.deferBatch !== "function") {
       return false
@@ -455,6 +466,7 @@ function createGenerator({
       isRunning: true,
       cancelEnabled: false,
       cancelRequested: false,
+      wasCanceled: false,
       timeoutId: null,
       controllers: new Set(),
       maxWaitingTimeSeconds: state.maxWaitingTimeSeconds
@@ -497,6 +509,10 @@ function createGenerator({
       if (!requestOptions.textToImage && ui.imageToProcess && base64Data) {
         setImagePreview(ui, base64Data)
         console.log("image base64 length: " + base64Data.length)
+      }
+
+      if (runState.cancelRequested) {
+        return
       }
 
       if (targetBatchCount > 1) {
@@ -577,6 +593,14 @@ function createGenerator({
         }
       }
 
+      if (runState.cancelRequested) {
+        if (generatedImages.length > 0 && typeof logLine === "function") {
+          logLine(`Canceled run discarded ${generatedImages.length} generated image(s).`)
+        }
+        generatedImages = []
+        return
+      }
+
       if (generatedImages.length === 0) {
         return
       }
@@ -623,7 +647,8 @@ function createGenerator({
           bounds,
           targetModel,
           placementOptions,
-          targetBatchCount
+          targetBatchCount,
+          true
         )
         if (!deferred) {
           if (typeof logLine === "function") {
@@ -655,7 +680,8 @@ function createGenerator({
             bounds,
             targetModel,
             placementOptions,
-            targetBatchCount
+            targetBatchCount,
+            true
           )
           if (!deferred && typeof logLine === "function") {
             logLine(error.message || String(error))
@@ -687,7 +713,13 @@ function createGenerator({
       }
       setGenerateButtonIdle()
 
-      const message = createRunSummaryMessage(targetBatchCount, generatedImages.length, elapsedSeconds, targetModel)
+      const message = createRunSummaryMessage(
+        targetBatchCount,
+        generatedImages.length,
+        elapsedSeconds,
+        targetModel,
+        runState.wasCanceled
+      )
       console.log(message)
       if (typeof logLine === "function") {
         logLine(message)

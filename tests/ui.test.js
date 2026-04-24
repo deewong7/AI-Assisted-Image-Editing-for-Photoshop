@@ -51,6 +51,7 @@ test.describe("renderDeferredBatchPlacements", () => {
     assert.equal(ui.deferredBatchList.style.display, "");
     assert.match(ui.deferredBatchList.innerHTML, /Poster\.psd/);
     assert.match(ui.deferredBatchList.innerHTML, /3\/4/);
+    assert.match(ui.deferredBatchList.innerHTML, /sp-label class="deferredBatchText"/);
     assert.match(ui.deferredBatchList.innerHTML, /data-batch-id="batch-1"/);
   });
 

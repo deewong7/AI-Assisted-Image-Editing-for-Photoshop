@@ -572,8 +572,10 @@ test.describe("createGenerator", () => {
     assert.equal(ui.jobCount.textContent, "");
   });
 
-  test("turns generate button into cancel after timeout and aborts unfinished requests on cancel click", async () => {
+  test("turns generate button into cancel after timeout and discards all results on cancel click", async () => {
     const batchPlaceCalls = [];
+    const deferredCalls = [];
+    const logs = [];
     let timeoutHandler;
     let providerCallCount = 0;
     const ui = {
@@ -619,6 +621,7 @@ test.describe("createGenerator", () => {
         apiKey: { "NanoBananaPro-api-key": "KEY" },
         resolution: "2K",
         adaptiveResolutionSetting: false,
+        enableDeferredBatchRecovery: true,
         maxWaitingTimeSeconds: 120,
         currentJobCount: 0
       },
@@ -654,7 +657,23 @@ test.describe("createGenerator", () => {
         });
       },
       critiqueWithProvider: async function* () {},
-      logLine: () => {},
+      deferredBatchManager: {
+        async deferBatch(args) {
+          deferredCalls.push(args);
+          return {
+            id: "deferred-cancel-1",
+            docName: "Cover.psd",
+            successCount: args.successCount,
+            requestedCount: args.requestedCount
+          };
+        },
+        getPendingBatches() {
+          return [];
+        }
+      },
+      logLine: (...parts) => {
+        logs.push(parts.join(" "));
+      },
       utils: {
         pickTier: () => "2K"
       },
@@ -680,8 +699,10 @@ test.describe("createGenerator", () => {
     generator.handleGenerateClick();
     await runPromise;
 
-    assert.equal(batchPlaceCalls.length, 1);
-    assert.deepEqual(batchPlaceCalls[0], ["generated-b64-1"]);
+    assert.equal(batchPlaceCalls.length, 0);
+    assert.equal(deferredCalls.length, 0);
+    assert.equal(logs.some(line => line.includes("Batch canceled after")), true);
+    assert.equal(logs.some(line => line.includes("1/3 succeeded")), false);
     assert.equal(ui.generateButton.innerText, "Generate");
     assert.equal(ui.generateButton.style.backgroundColor, "");
   });
@@ -1032,7 +1053,7 @@ test.describe("createGenerator", () => {
     assert.match(ui.deferredBatchList.innerHTML, /Cover\.psd/);
   });
 
-  test("defers generated images when the active document changes before placement", async () => {
+  test("defers generated images when the active document changes before placement even if manual insert mode is disabled", async () => {
     const deferredCalls = [];
     let placementCalls = 0;
     const pendingEntries = [{
@@ -1087,7 +1108,7 @@ test.describe("createGenerator", () => {
         apiKey: { "NanoBananaPro-api-key": "KEY" },
         resolution: "2K",
         adaptiveResolutionSetting: false,
-        enableDeferredBatchRecovery: true,
+        enableDeferredBatchRecovery: false,
         currentJobCount: 0
       },
       selection: {
@@ -1138,7 +1159,7 @@ test.describe("createGenerator", () => {
     assert.match(ui.deferredBatchList.innerHTML, /1\/1/);
   });
 
-  test("defers generated images when placement is blocked by modal state", async () => {
+  test("defers generated images when placement is blocked by modal state even if manual insert mode is disabled", async () => {
     const deferredCalls = [];
     const pendingEntries = [{
       id: "deferred-2",
@@ -1194,7 +1215,7 @@ test.describe("createGenerator", () => {
         apiKey: { "NanoBananaPro-api-key": "KEY" },
         resolution: "2K",
         adaptiveResolutionSetting: false,
-        enableDeferredBatchRecovery: true,
+        enableDeferredBatchRecovery: false,
         currentJobCount: 0
       },
       selection: {
