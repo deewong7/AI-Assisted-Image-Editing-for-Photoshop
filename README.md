@@ -1,4 +1,4 @@
-# AI-Assisted Image Editing for Photoshop
+# Blendrr
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
 [![Test](https://github.com/deewong7/AI-Assisted-Image-Editing-for-Photoshop/actions/workflows/tests.yml/badge.svg?branch=dev)](https://github.com/deewong7/AI-Assisted-Image-Editing-for-Photoshop/actions/workflows/tests.yml)

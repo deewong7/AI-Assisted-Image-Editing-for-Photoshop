@@ -74,10 +74,11 @@ test.describe("generateWithProvider (index)", () => {
 test.describe("getGenerationBackendName (index)", () => {
   test("delegates to the google provider for google models", () => {
     const backendName = getGenerationBackendName("gemini-3.1-flash-image-preview", {
-      apiKey: { "NanoBananaPro-api-key": "AQ_KEY" }
+      apiKey: { "NanoBananaPro-api-key": "AQ_KEY" },
+      googleApiBackend: "google-ai-studio"
     });
 
-    assert.equal(backendName, "Vertex AI");
+    assert.equal(backendName, "Google AI Studio");
   });
 
   test("returns undefined when provider does not expose backend metadata", () => {

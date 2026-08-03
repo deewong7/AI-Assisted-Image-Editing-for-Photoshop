@@ -59,6 +59,7 @@ function getUI() {
     showChatTabCheckbox: document.getElementById("showChatTab"),
     persistGeneratedImages: document.getElementById("persistGeneratedImages"),
     enableBatchGeneration: document.getElementById("enableBatchGeneration"),
+    googleApiBackend: document.getElementById("googleApiBackend"),
     exportPromptLibraryButton: document.getElementById("exportPromptLibrary"),
     importPromptLibraryButton: document.getElementById("importPromptLibrary"),
     enableCritiquePromptEdit: document.getElementById("enableCritiquePromptEdit"),

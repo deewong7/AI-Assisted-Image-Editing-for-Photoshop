@@ -117,6 +117,7 @@ function createSavedPrefs(overrides = {}) {
     persistGeneratedImages: false,
     enableBatchGeneration: false,
     showChatTab: true,
+    googleApiBackend: "auto",
     maxWaitingTimeSeconds: 120,
     maxBatchCount: 8,
     enableGeneratedGroupColorLabel: false,
@@ -297,6 +298,69 @@ test.describe("deferred batch recovery preference", () => {
     assert.deepEqual(savedPrefs, [createSavedPrefs({
       enableDeferredBatchRecovery: true
     })]);
+  });
+});
+
+test.describe("google api backend preference", () => {
+  test("initializeUI reflects saved googleApiBackend state", () => {
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      googleApiBackend: createBatchSlider("auto", "16")
+    };
+    const args = createBaseArgs(ui);
+    args.state.googleApiBackend = "google-ai-studio";
+
+    initializeUI(args);
+
+    assert.equal(ui.googleApiBackend.value, "google-ai-studio");
+  });
+
+  test("changing googleApiBackend saves state", () => {
+    const savedPrefs = [];
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      googleApiBackend: createBatchSlider("auto", "16")
+    };
+    const args = createBaseArgs(ui);
+    args.storage.savePluginPrefs = (_storage, prefs) => {
+      savedPrefs.push(prefs);
+    };
+    global.localStorage = {};
+
+    initializeUI(args);
+    bindEvents(args);
+
+    ui.googleApiBackend.change("vertex-ai");
+
+    assert.equal(args.state.googleApiBackend, "vertex-ai");
+    assert.deepEqual(savedPrefs, [createSavedPrefs({
+      googleApiBackend: "vertex-ai"
+    })]);
+  });
+
+  test("invalid googleApiBackend falls back to auto", () => {
+    const savedPrefs = [];
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      googleApiBackend: createBatchSlider("auto", "16")
+    };
+    const args = createBaseArgs(ui);
+    args.storage.savePluginPrefs = (_storage, prefs) => {
+      savedPrefs.push(prefs);
+    };
+    global.localStorage = {};
+
+    initializeUI(args);
+    bindEvents(args);
+
+    ui.googleApiBackend.change("unknown");
+
+    assert.equal(args.state.googleApiBackend, "auto");
+    assert.equal(ui.googleApiBackend.value, "auto");
+    assert.deepEqual(savedPrefs, [createSavedPrefs()]);
   });
 });
 

@@ -1,6 +1,6 @@
 {
-  "id": "io.github.deewong7.ai-assisted-image-editing-for-ps-vanilla",
-  "name": "AI-assisted Image Editing for Photoshop Vanilla",
+  "id": "io.github.deewong7.blendrr",
+  "name": "Blendrr",
   "version": "0.2.9-alpha",
   "main": "index.html",
   "host": {
@@ -84,7 +84,7 @@
         }
       ],
       "label": {
-        "default": "Image Generation"
+        "default": "Blendrr"
       }
     }
   ],

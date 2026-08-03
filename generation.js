@@ -236,9 +236,11 @@ function createGenerator({
     })
   }
 
-  function createFetchLogMessage(targetModel, requestOptions) {
+  function createFetchLogMessage(targetModel, requestOptions, total = 1) {
     const resolution = requestOptions?.resolution
-    const baseMessage = "Fetching " + resolution + " image to " + targetModel
+    const subject = total > 1 ? `${total} images` : "image"
+    const resolutionSuffix = resolution ? ` at ${resolution}` : ""
+    const baseMessage = `Generating ${subject}${resolutionSuffix} with ${targetModel}`
     if (targetModel === "localtest") {
       return baseMessage
     }
@@ -355,9 +357,6 @@ function createGenerator({
           throw new Error("no image data returned")
         }
 
-        if (typeof logLine === "function") {
-          logLine(`Batch ${batchNumber}/${totalBatchCount} finished`)
-        }
         return {
           batchNumber,
           generatedBase64
@@ -435,6 +434,7 @@ function createGenerator({
       referenceImages: Array.isArray(state.imageArray) ? [...state.imageArray] : [],
       textToImage: state.textToImage,
       apiKey: { ...state.apiKey },
+      googleApiBackend: state.googleApiBackend,
       showModelParameters: state.showModelParameters,
       temperature: state.temperature,
       topP: state.topP,
@@ -449,9 +449,6 @@ function createGenerator({
     }
 
     console.log("Prompt: " + prompt)
-    if (typeof logLine === "function") {
-      logLine("-----" + targetModel + "-----")
-    }
 
     if (ui.errorArea) {
       ui.errorArea.innerText = ""
@@ -515,6 +512,10 @@ function createGenerator({
         return
       }
 
+      if (typeof logLine === "function") {
+        logLine(createFetchLogMessage(targetModel, requestOptions, targetBatchCount))
+      }
+
       if (targetBatchCount > 1) {
         let completedCount = 0
         setGenerateButtonProgress(0, targetBatchCount, runState)
@@ -529,10 +530,6 @@ function createGenerator({
         const batchTasks = []
         for (let index = 0; index < targetBatchCount; index += 1) {
           const batchNumber = index + 1
-          if (typeof logLine === "function") {
-            logLine(`Batch ${batchNumber}/${targetBatchCount} started`)
-            logLine(createFetchLogMessage(targetModel, requestOptions))
-          }
           batchTasks.push(
             createBatchTask(
               targetModel,
@@ -552,11 +549,6 @@ function createGenerator({
           .map(result => result.value.generatedBase64)
       } else {
         setGenerateButtonProgress(1, targetBatchCount, runState)
-        if (typeof logLine === "function") {
-          logLine("Batch 1/1 started")
-          logLine(createFetchLogMessage(targetModel, requestOptions))
-        }
-
         const controller = createRunController(runState)
         try {
           const generatedBase64 = await generateSingleImage(
@@ -566,22 +558,19 @@ function createGenerator({
             controller?.signal
           )
           if (!generatedBase64 || generatedBase64.length === 0) {
-            const message = "Batch 1/1 failed: no image data returned"
+            const message = "Generation failed: no image data returned"
             console.log(message)
             if (typeof logLine === "function") {
               logLine(message)
             }
           } else {
             generatedImages.push(generatedBase64)
-            if (typeof logLine === "function") {
-              logLine("Batch 1/1 finished")
-            }
           }
         } catch (error) {
           const cancelled = isAbortError(error)
           const message = cancelled
-            ? "Batch 1/1 canceled"
-            : `Batch 1/1 failed: ${error?.message || String(error)}`
+            ? "Generation canceled"
+            : `Generation failed: ${error?.message || String(error)}`
           if (!cancelled) {
             console.error("Error during remote API call: " + error)
           }
@@ -794,6 +783,7 @@ function createGenerator({
         prompt,
         base64Image: base64Data,
         apiKey: state.apiKey,
+        googleApiBackend: state.googleApiBackend,
         logLine
       })) {
         if (!textChunk || !ui.chatOutput) {

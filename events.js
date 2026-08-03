@@ -14,6 +14,11 @@ const KEY_MAP = [
   { fieldKey: "apiKeyBytedance", keyName: "SeeDream-api-key" },
   { fieldKey: "apiKeyXai", keyName: "xAI-api-key" }
 ];
+const GOOGLE_API_BACKENDS = new Set(["auto", "google-ai-studio", "vertex-ai"]);
+
+function normalizeGoogleApiBackend(value) {
+  return GOOGLE_API_BACKENDS.has(value) ? value : "auto";
+}
 
 function updateApiKey(ui, state, storage, update = true) {
   let changed = false;
@@ -157,6 +162,7 @@ function savePluginPrefsState(storage, state) {
     persistGeneratedImages: state.persistGeneratedImages === true,
     enableBatchGeneration: state.enableBatchGeneration === true,
     showChatTab: state.showChatTab !== false,
+    googleApiBackend: normalizeGoogleApiBackend(state.googleApiBackend),
     maxWaitingTimeSeconds: normalizeMaxWaitingTimeSeconds(state.maxWaitingTimeSeconds),
     maxBatchCount,
     enableGeneratedGroupColorLabel: state.enableGeneratedGroupColorLabel === true,
@@ -184,6 +190,10 @@ function initializeUI({ ui, state, models, logger, storage, defaultChatPromptTex
   }
   if (ui.persistGeneratedImages) {
     ui.persistGeneratedImages.checked = state.persistGeneratedImages === true;
+  }
+  state.googleApiBackend = normalizeGoogleApiBackend(state.googleApiBackend);
+  if (ui.googleApiBackend) {
+    ui.googleApiBackend.value = state.googleApiBackend;
   }
   if (ui.enableDeferredBatchRecovery) {
     ui.enableDeferredBatchRecovery.checked = state.enableDeferredBatchRecovery === true;
@@ -595,6 +605,14 @@ function bindEvents({
     ui.enableBatchGeneration.addEventListener("click", (e) => {
       state.enableBatchGeneration = e.target.checked;
       applyBatchGenerationState(ui, state);
+      savePluginPrefsState(storage, state);
+    });
+  }
+
+  if (ui.googleApiBackend) {
+    ui.googleApiBackend.addEventListener("change", (e) => {
+      state.googleApiBackend = normalizeGoogleApiBackend(e.target?.value);
+      ui.googleApiBackend.value = state.googleApiBackend;
       savePluginPrefsState(storage, state);
     });
   }

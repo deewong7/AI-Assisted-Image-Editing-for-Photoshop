@@ -16,6 +16,7 @@ const DEFAULT_PLUGIN_PREFS = Object.freeze({
   persistGeneratedImages: false,
   enableBatchGeneration: false,
   showChatTab: true,
+  googleApiBackend: "auto",
   maxWaitingTimeSeconds: 120,
   maxBatchCount: DEFAULT_MAX_BATCH_COUNT,
   enableGeneratedGroupColorLabel: false,
@@ -150,6 +151,9 @@ function createState({ ui, apiKey, promptPresets, pluginPrefs, pendingBatchPlace
     skipMask: false,
     persistGeneratedImages: prefs.persistGeneratedImages === true,
     showChatTab: prefs.showChatTab !== false,
+    googleApiBackend: ["auto", "google-ai-studio", "vertex-ai"].includes(prefs.googleApiBackend)
+      ? prefs.googleApiBackend
+      : "auto",
     maxWaitingTimeSeconds,
     maxBatchCount,
     enableGeneratedGroupColorLabel: prefs.enableGeneratedGroupColorLabel === true,

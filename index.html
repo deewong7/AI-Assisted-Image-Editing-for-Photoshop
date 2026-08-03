@@ -263,6 +263,15 @@
         <sp-checkbox id="persistGeneratedImages">Save Generated Images Persistently</sp-checkbox><br>
         <sp-checkbox id="enableDeferredBatchRecovery">Queue Batch Results For Manual Insert</sp-checkbox><br>
         <sp-checkbox id="enableCritiquePromptEdit">Enable Critique Prompt Edit</sp-checkbox><br>
+        <sp-picker id="googleApiBackend" placeholder="Choose Google API backend..." style="width: 200px;">
+          <sp-label slot="label">Google API Backend</sp-label>
+          <sp-menu slot="options">
+            <sp-menu-item value="auto" selected>Auto</sp-menu-item>
+            <sp-menu-item value="google-ai-studio">Google AI Studio</sp-menu-item>
+            <sp-menu-item value="vertex-ai">Vertex AI</sp-menu-item>
+          </sp-menu>
+        </sp-picker>
+        <br>
         <br>
 
         <sp-label>Export Prompt Library</sp-label><br>
@@ -343,7 +352,7 @@
 
       <sp-heading size="xs">Copyright</sp-heading>
       <sp-label>
-        AI-assisted image editing for Photoshop<br>
+        Blendrr<br>
         Version 0.2.9-alpha<br>
 
         © 2026 dw<br>

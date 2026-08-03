@@ -2,10 +2,20 @@ const supportedModels = ["gemini-3-pro-image-preview", "gemini-3.1-flash-image-p
 const VERTEX_API_ENDPOINT = "https://aiplatform.googleapis.com";
 const AI_STUDIO_API_ENDPOINT = "https://generativelanguage.googleapis.com";
 
-function getApiConfig(apiKey, modelId, apiName) {
+function shouldUseVertexApi(apiKeyValue, googleApiBackend = "auto") {
+  if (googleApiBackend === "vertex-ai") {
+    return true;
+  }
+  if (googleApiBackend === "google-ai-studio") {
+    return false;
+  }
+  return typeof apiKeyValue === "string" && apiKeyValue.startsWith("AQ");
+}
+
+function getApiConfig(apiKey, modelId, apiName, googleApiBackend = "auto") {
   const API_KEY = apiKey["NanoBananaPro-api-key"];
   const MODEL_ID = modelId || supportedModels[0];
-  const useVertexApi = typeof API_KEY === "string" && API_KEY.startsWith("AQ");
+  const useVertexApi = shouldUseVertexApi(API_KEY, googleApiBackend);
 
   const url = useVertexApi
     ? `${VERTEX_API_ENDPOINT}/v1/publishers/google/models/${MODEL_ID}:${apiName}?key=${API_KEY}`
@@ -20,8 +30,8 @@ function getApiConfig(apiKey, modelId, apiName) {
 }
 
 function getGenerationBackendName(options = {}) {
-  const { apiKey = {}, modelId } = options;
-  const { useVertexApi } = getApiConfig(apiKey, modelId, "generateContent");
+  const { apiKey = {}, modelId, googleApiBackend } = options;
+  const { useVertexApi } = getApiConfig(apiKey, modelId, "generateContent", googleApiBackend);
   return useVertexApi ? "Vertex AI" : "Google AI Studio";
 }
 
@@ -236,6 +246,7 @@ async function generateImage(options) {
     temperature,
     topP,
     modelId,
+    googleApiBackend,
     logLine,
     textToImage = false,
     signal
@@ -252,7 +263,7 @@ async function generateImage(options) {
   const API_KEY = apiKey["NanoBananaPro-api-key"];
   const MODEL_ID = modelId || supportedModels[0];
   const GENERATE_CONTENT_API = "generateContent";
-  const { useVertexApi, url } = getApiConfig(apiKey, MODEL_ID, GENERATE_CONTENT_API);
+  const { useVertexApi, url } = getApiConfig(apiKey, MODEL_ID, GENERATE_CONTENT_API, googleApiBackend);
   const safeTemperature = Number.isFinite(temperature) ? temperature : 1.0;
   const safeTopP = Number.isFinite(topP) ? topP : 0.90;
 
@@ -384,6 +395,7 @@ async function* critiqueImageStream(options) {
     base64Image,
     apiKey,
     modelId,
+    googleApiBackend,
     logLine
   } = options || {};
 
@@ -395,7 +407,7 @@ async function* critiqueImageStream(options) {
   }
 
   const MODEL_ID = modelId || supportedModels[0];
-  const { API_KEY, useVertexApi, url } = getApiConfig(apiKey, MODEL_ID, "streamGenerateContent");
+  const { API_KEY, useVertexApi, url } = getApiConfig(apiKey, MODEL_ID, "streamGenerateContent", googleApiBackend);
   const requestBody = {
     contents: [
       {

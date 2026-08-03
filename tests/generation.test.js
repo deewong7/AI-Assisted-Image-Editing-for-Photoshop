@@ -59,6 +59,7 @@ test.describe("createGenerator", () => {
         persistGeneratedImages: false,
         showModelParameters: true,
         apiKey: { "NanoBananaPro-api-key": "KEY" },
+        googleApiBackend: "google-ai-studio",
         resolution: "2K",
         adaptiveResolutionSetting: false,
         currentJobCount: 0
@@ -91,8 +92,9 @@ test.describe("createGenerator", () => {
 
     assert.equal(providerCall.modelId, "gemini-3.1-flash-image-preview");
     assert.equal(providerCall.options.resolution, "2K");
+    assert.equal(providerCall.options.googleApiBackend, "google-ai-studio");
     assert.equal(
-      logs.some(line => line.includes("Fetching 2K image to gemini-3.1-flash-image-preview via Google AI Studio")),
+      logs.some(line => line.includes("Generating image at 2K with gemini-3.1-flash-image-preview via Google AI Studio")),
       true
     );
   });
@@ -167,8 +169,8 @@ test.describe("createGenerator", () => {
 
     assert.equal(providerCall.modelId, "grok-imagine-image");
     assert.equal(providerCall.options.resolution, "2K");
-    assert.equal(logs.some(line => line.includes("Fetching 2K image to grok-imagine-image")), true);
-    assert.equal(logs.some(line => line.includes("Fetching 2K image to grok-imagine-image via ")), false);
+    assert.equal(logs.some(line => line.includes("Generating image at 2K with grok-imagine-image")), true);
+    assert.equal(logs.some(line => line.includes("Generating image at 2K with grok-imagine-image via ")), false);
   });
 
   test("uses 3K adaptive resolution for SeeDream 5", async () => {
@@ -336,7 +338,7 @@ test.describe("createGenerator", () => {
     assert.equal(ui.generateButton.innerText, "Generating 0/4...");
     assert.equal(ui.jobCount.textContent, "Batch Progress: 0/4");
     assert.equal(
-      logs.some(line => line.includes("Fetching 2K image to gemini-3.1-flash-image-preview via Vertex AI")),
+      logs.some(line => line.includes("Generating 4 images at 2K with gemini-3.1-flash-image-preview via Vertex AI")),
       true
     );
 
@@ -469,6 +471,13 @@ test.describe("createGenerator", () => {
     assert.deepEqual(batchPlaceCalls[0].images, ["generated-b64-1", "generated-b64-3"]);
     assert.equal(batchPlaceCalls[0].suffix, "gemini-3.1-flash-image-preview");
     assert.equal(batchPlaceCalls[0].options.persistGeneratedImages, true);
+    assert.equal(
+      logs.filter(line =>
+        line.includes("Generating 4 images at 2K with gemini-3.1-flash-image-preview via Google AI Studio")
+      ).length,
+      1
+    );
+    assert.equal(logs.some(line => line.includes("Batch 1/4 started")), false);
     assert.equal(logs.some(line => line.includes("Batch 2/4 failed: provider failed")), true);
     assert.equal(logs.some(line => line.includes("2/4 succeeded, 2 failed")), true);
   });
