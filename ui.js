@@ -11,7 +11,7 @@ function getUI() {
     ratioPicker: document.getElementById("ratioPicker"),
     promptInput: document.getElementById("promptInput"),
     batchCountControl: document.getElementById("batchCountControl"),
-    batchCountPicker: document.getElementById("batchCountPicker"),
+    batchCountSlider: document.getElementById("batchCountSlider"),
     jobCount: document.getElementById("jobCount"),
     promptPicker: document.getElementById("promptPicker"),
     promptPresetTextarea: document.getElementById("promptPresetTextarea"),
@@ -52,9 +52,16 @@ function getUI() {
     allowNSFW: document.getElementById("allowNSFW"),
     previewImageCheckbox: document.getElementById("previewImage"),
     maxWaitingTimeSlider: document.getElementById("maxWaitingTimeSlider"),
+    maxBatchCountSlider: document.getElementById("maxBatchCountSlider"),
+    enableGeneratedGroupColorLabel: document.getElementById("enableGeneratedGroupColorLabel"),
+    generatedGroupColorLabel: document.getElementById("generatedGroupColorLabel"),
+    enableDeferredBatchRecovery: document.getElementById("enableDeferredBatchRecovery"),
     showChatTabCheckbox: document.getElementById("showChatTab"),
     persistGeneratedImages: document.getElementById("persistGeneratedImages"),
     enableBatchGeneration: document.getElementById("enableBatchGeneration"),
+    googleApiBackend: document.getElementById("googleApiBackend"),
+    exportPromptLibraryButton: document.getElementById("exportPromptLibrary"),
+    importPromptLibraryButton: document.getElementById("importPromptLibrary"),
     enableCritiquePromptEdit: document.getElementById("enableCritiquePromptEdit"),
     openImageFolderButton: document.getElementById("openImageFolder"),
     adaptiveRatioSetting: document.getElementById("adaptiveRatioSetting"),
@@ -72,7 +79,8 @@ function getUI() {
     referenceImage: document.getElementById("referenceImage"),
     refImagePreview: document.getElementById("refImagePreview"),
     refImagePreviewDiv: document.getElementById("refImagePreviewDiv"),
-    refCount: document.getElementById("refCount")
+    refCount: document.getElementById("refCount"),
+    deferredBatchList: document.getElementById("deferredBatchList")
   };
 }
 
@@ -183,13 +191,20 @@ function renderModelUI(ui, state, models, logLine) {
 
 function populatePromptPresets(ui, promptPresets) {
   if (!ui.promptPicker || !promptPresets) return;
+  if ("innerHTML" in ui.promptPicker) {
+    ui.promptPicker.innerHTML = "";
+  }
 
   Object.keys(promptPresets).forEach(key => {
-    const item = document.createElement("sp-menu-item");
+    const item = typeof document !== "undefined" && typeof document.createElement === "function"
+      ? document.createElement("sp-menu-item")
+      : {};
     item.name = key;
     item.textContent = key;
     item.value = promptPresets[key];
-    ui.promptPicker.appendChild(item);
+    if (typeof ui.promptPicker.appendChild === "function") {
+      ui.promptPicker.appendChild(item);
+    }
   });
 }
 
@@ -267,6 +282,51 @@ function renderBatchProgress(ui, completed, total) {
   ui.jobCount.textContent = `Batch Progress: ${safeCompleted}/${total}`;
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderDeferredBatchPlacements(ui, placements) {
+  if (!ui.deferredBatchList) {
+    return;
+  }
+
+  const pendingPlacements = Array.isArray(placements)
+    ? placements.filter(Boolean)
+    : [];
+
+  if (pendingPlacements.length === 0) {
+    ui.deferredBatchList.style.display = "none";
+    ui.deferredBatchList.innerHTML = "";
+    return;
+  }
+
+  ui.deferredBatchList.style.display = "";
+  ui.deferredBatchList.innerHTML = pendingPlacements.map(entry => {
+    const docName = escapeHtml(entry.docName || "Unknown Document");
+    const successCount = Number(entry.successCount) || 0;
+    const requestedCount = Math.max(Number(entry.requestedCount) || 0, successCount);
+    const batchId = escapeHtml(entry.id || "");
+    return `
+      <div class="deferredBatchItem">
+        <sp-action-button
+          quiet
+          class="deferredBatchInsertButton"
+          data-batch-id="${batchId}"
+          title="Insert generated batch into original document"
+          aria-label="Insert generated batch into original document"
+        >⤓</sp-action-button>
+        <sp-label class="deferredBatchText">${docName} ${successCount}/${requestedCount}</sp-label>
+      </div>
+    `;
+  }).join("");
+}
+
 module.exports = {
   getUI,
   renderModelUI,
@@ -278,5 +338,6 @@ module.exports = {
   appendReferencePreview,
   clearReferencePreview,
   renderJobCount,
-  renderBatchProgress
+  renderBatchProgress,
+  renderDeferredBatchPlacements
 };

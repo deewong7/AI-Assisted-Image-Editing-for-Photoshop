@@ -1,5 +1,12 @@
 const { getGenerationBackendName } = require("./providers/index.js")
-const { setImagePreview, setChatImagePreview, renderJobCount, renderBatchProgress } = require('./ui.js')
+const {
+  setImagePreview,
+  setChatImagePreview,
+  renderJobCount,
+  renderBatchProgress,
+  renderDeferredBatchPlacements
+} = require('./ui.js')
+const { clampMaxBatchCount, clampBatchCount } = require("./limits")
 function createGenerator({
   app,
   core,
@@ -9,6 +16,7 @@ function createGenerator({
   placer,
   generateWithProvider,
   critiqueWithProvider,
+  deferredBatchManager,
   logLine,
   utils,
   seedreamModelId,
@@ -68,12 +76,21 @@ function createGenerator({
       bounds.height > 0;
   }
 
-  function clampBatchCount(value) {
-    return Math.min(4, Math.max(1, Number(value) || 1))
-  }
-
   function clampMaxWaitingTimeSeconds(value) {
     return Math.min(300, Math.max(1, Number(value) || 120))
+  }
+
+  function getDocumentSnapshot(doc) {
+    const docId = doc?.id ?? null
+    const docName = typeof doc?.title === "string" && doc.title.trim()
+      ? doc.title.trim()
+      : typeof doc?.name === "string" && doc.name.trim()
+        ? doc.name.trim()
+        : (docId !== null ? `Document ${docId}` : "Unknown Document")
+    return {
+      id: docId,
+      name: docName
+    }
   }
 
   function isAbortError(error) {
@@ -186,6 +203,7 @@ function createGenerator({
     }
 
     runState.cancelRequested = true
+    runState.wasCanceled = true
     const unfinishedControllers = Array.from(runState.controllers)
     unfinishedControllers.forEach(controller => {
       try {
@@ -218,9 +236,11 @@ function createGenerator({
     })
   }
 
-  function createFetchLogMessage(targetModel, requestOptions) {
+  function createFetchLogMessage(targetModel, requestOptions, total = 1) {
     const resolution = requestOptions?.resolution
-    const baseMessage = "Fetching " + resolution + " image to " + targetModel
+    const subject = total > 1 ? `${total} images` : "image"
+    const resolutionSuffix = resolution ? ` at ${resolution}` : ""
+    const baseMessage = `Generating ${subject}${resolutionSuffix} with ${targetModel}`
     if (targetModel === "localtest") {
       return baseMessage
     }
@@ -229,7 +249,13 @@ function createGenerator({
     return backendName ? `${baseMessage} via ${backendName}` : baseMessage
   }
 
-  function createRunSummaryMessage(total, successCount, elapsedSeconds, targetModel) {
+  function createRunSummaryMessage(total, successCount, elapsedSeconds, targetModel, cancelled = false) {
+    if (cancelled) {
+      return total <= 1
+        ? `Job canceled after ${elapsedSeconds} seconds - ${targetModel}`
+        : `Batch canceled after ${elapsedSeconds} seconds - ${targetModel}`
+    }
+
     if (total <= 1) {
       const status = successCount === 1 ? "finished" : "failed"
       return `Job ${status} after ${elapsedSeconds} seconds - ${targetModel}`
@@ -247,6 +273,10 @@ function createGenerator({
   }
 
   async function generateSingleImage(targetModel, requestOptions, base64Data, signal) {
+    if (signal?.aborted) {
+      throw createAbortError()
+    }
+
     if (targetModel === "localtest") {
       if (signal?.aborted) {
         throw createAbortError()
@@ -279,6 +309,38 @@ function createGenerator({
     }
   }
 
+  async function deferBatchPlacement(reason, generatedImages, requestDocument, bounds, targetModel, placementOptions, requestedCount, force = false) {
+    if ((!force && state.enableDeferredBatchRecovery !== true) ||
+      !deferredBatchManager ||
+      typeof deferredBatchManager.deferBatch !== "function") {
+      return false
+    }
+
+    const deferredEntry = await deferredBatchManager.deferBatch({
+      images: generatedImages,
+      requestDocument,
+      bounds,
+      targetModel,
+      placementOptions,
+      requestedCount,
+      successCount: generatedImages.length
+    })
+
+    state.pendingBatchPlacements = typeof deferredBatchManager.getPendingBatches === "function"
+      ? deferredBatchManager.getPendingBatches()
+      : [...(state.pendingBatchPlacements || []), deferredEntry]
+    renderDeferredBatchPlacements(ui, state.pendingBatchPlacements)
+
+    if (typeof logLine === "function") {
+      logLine(
+        `Saved batch for later insertion to ${deferredEntry.docName} ` +
+        `(${deferredEntry.successCount}/${deferredEntry.requestedCount}) because ${reason}.`
+      )
+    }
+
+    return true
+  }
+
   function createBatchTask(targetModel, requestOptions, base64Data, batchNumber, totalBatchCount, onSettled, runState) {
     const controller = createRunController(runState)
     const signal = controller?.signal
@@ -295,9 +357,6 @@ function createGenerator({
           throw new Error("no image data returned")
         }
 
-        if (typeof logLine === "function") {
-          logLine(`Batch ${batchNumber}/${totalBatchCount} finished`)
-        }
         return {
           batchNumber,
           generatedBase64
@@ -329,6 +388,7 @@ function createGenerator({
       return
     }
 
+    const requestDocument = getDocumentSnapshot(app.activeDocument)
     const selectionData = app.activeDocument.selection
     if (!selectionData?.bounds) {
       core.showAlert("No Selection.")
@@ -355,8 +415,9 @@ function createGenerator({
       return
     }
 
+    state.maxBatchCount = clampMaxBatchCount(state.maxBatchCount)
     const targetBatchCount = state.enableBatchGeneration === true
-      ? clampBatchCount(state.batchCount)
+      ? clampBatchCount(state.batchCount, state.maxBatchCount)
       : 1
     const shouldFetchBase64 = !state.textToImage || targetModel === "localtest"
     const temperatureInput = parseFloat(ui.temperature?.value)
@@ -373,6 +434,7 @@ function createGenerator({
       referenceImages: Array.isArray(state.imageArray) ? [...state.imageArray] : [],
       textToImage: state.textToImage,
       apiKey: { ...state.apiKey },
+      googleApiBackend: state.googleApiBackend,
       showModelParameters: state.showModelParameters,
       temperature: state.temperature,
       topP: state.topP,
@@ -381,13 +443,12 @@ function createGenerator({
     }
     const placementOptions = {
       skipMask: state.skipMask,
-      persistGeneratedImages: state.persistGeneratedImages
+      persistGeneratedImages: state.persistGeneratedImages,
+      enableGeneratedGroupColorLabel: state.enableGeneratedGroupColorLabel,
+      generatedGroupColorLabel: state.generatedGroupColorLabel
     }
 
     console.log("Prompt: " + prompt)
-    if (typeof logLine === "function") {
-      logLine("-----" + targetModel + "-----")
-    }
 
     if (ui.errorArea) {
       ui.errorArea.innerText = ""
@@ -402,6 +463,7 @@ function createGenerator({
       isRunning: true,
       cancelEnabled: false,
       cancelRequested: false,
+      wasCanceled: false,
       timeoutId: null,
       controllers: new Set(),
       maxWaitingTimeSeconds: state.maxWaitingTimeSeconds
@@ -446,6 +508,14 @@ function createGenerator({
         console.log("image base64 length: " + base64Data.length)
       }
 
+      if (runState.cancelRequested) {
+        return
+      }
+
+      if (typeof logLine === "function") {
+        logLine(createFetchLogMessage(targetModel, requestOptions, targetBatchCount))
+      }
+
       if (targetBatchCount > 1) {
         let completedCount = 0
         setGenerateButtonProgress(0, targetBatchCount, runState)
@@ -460,10 +530,6 @@ function createGenerator({
         const batchTasks = []
         for (let index = 0; index < targetBatchCount; index += 1) {
           const batchNumber = index + 1
-          if (typeof logLine === "function") {
-            logLine(`Batch ${batchNumber}/${targetBatchCount} started`)
-            logLine(createFetchLogMessage(targetModel, requestOptions))
-          }
           batchTasks.push(
             createBatchTask(
               targetModel,
@@ -483,11 +549,6 @@ function createGenerator({
           .map(result => result.value.generatedBase64)
       } else {
         setGenerateButtonProgress(1, targetBatchCount, runState)
-        if (typeof logLine === "function") {
-          logLine("Batch 1/1 started")
-          logLine(createFetchLogMessage(targetModel, requestOptions))
-        }
-
         const controller = createRunController(runState)
         try {
           const generatedBase64 = await generateSingleImage(
@@ -497,22 +558,19 @@ function createGenerator({
             controller?.signal
           )
           if (!generatedBase64 || generatedBase64.length === 0) {
-            const message = "Batch 1/1 failed: no image data returned"
+            const message = "Generation failed: no image data returned"
             console.log(message)
             if (typeof logLine === "function") {
               logLine(message)
             }
           } else {
             generatedImages.push(generatedBase64)
-            if (typeof logLine === "function") {
-              logLine("Batch 1/1 finished")
-            }
           }
         } catch (error) {
           const cancelled = isAbortError(error)
           const message = cancelled
-            ? "Batch 1/1 canceled"
-            : `Batch 1/1 failed: ${error?.message || String(error)}`
+            ? "Generation canceled"
+            : `Generation failed: ${error?.message || String(error)}`
           if (!cancelled) {
             console.error("Error during remote API call: " + error)
           }
@@ -524,7 +582,35 @@ function createGenerator({
         }
       }
 
+      if (runState.cancelRequested) {
+        if (generatedImages.length > 0 && typeof logLine === "function") {
+          logLine(`Canceled run discarded ${generatedImages.length} generated image(s).`)
+        }
+        generatedImages = []
+        return
+      }
+
       if (generatedImages.length === 0) {
+        return
+      }
+
+      if (state.enableDeferredBatchRecovery === true) {
+        if (typeof logLine === "function") {
+          logLine(
+            generatedImages.length > 1
+              ? "Queueing generated image batch for manual insert, count: " + generatedImages.length
+              : "Queueing generated image for manual insert."
+          )
+        }
+        await deferBatchPlacement(
+          "manual insert mode is enabled",
+          generatedImages,
+          requestDocument,
+          bounds,
+          targetModel,
+          placementOptions,
+          targetBatchCount
+        )
         return
       }
 
@@ -540,16 +626,58 @@ function createGenerator({
         }
       }
 
-      if (targetBatchCount > 1 && typeof placer.placeBatchToCurrentDocAtSelection === "function") {
-        await placer.placeBatchToCurrentDocAtSelection(generatedImages, bounds, targetModel, placementOptions)
-      } else if (generatedImages.length === 1) {
-        await placer.placeToCurrentDocAtSelection(generatedImages[0], bounds, targetModel, placementOptions)
-      } else if (typeof placer.placeBatchToCurrentDocAtSelection === "function") {
-        await placer.placeBatchToCurrentDocAtSelection(generatedImages, bounds, targetModel, placementOptions)
-      } else {
-        for (const generatedBase64 of generatedImages) {
-          await placer.placeToCurrentDocAtSelection(generatedBase64, bounds, targetModel, placementOptions)
+      const currentDocumentId = app.activeDocument?.id ?? null
+      if (requestDocument.id !== null && currentDocumentId !== requestDocument.id) {
+        const message = `Generated batch finished, but active document no longer matches ${requestDocument.name}.`
+        const deferred = await deferBatchPlacement(
+          "the active document changed before placement",
+          generatedImages,
+          requestDocument,
+          bounds,
+          targetModel,
+          placementOptions,
+          targetBatchCount,
+          true
+        )
+        if (!deferred) {
+          if (typeof logLine === "function") {
+            logLine(message + " Placement skipped.")
+          }
+          core.showAlert("Generated batch finished, but the active document changed. Placement skipped.")
         }
+        return
+      }
+
+      try {
+        if (targetBatchCount > 1 && typeof placer.placeBatchToCurrentDocAtSelection === "function") {
+          await placer.placeBatchToCurrentDocAtSelection(generatedImages, bounds, targetModel, placementOptions)
+        } else if (generatedImages.length === 1) {
+          await placer.placeToCurrentDocAtSelection(generatedImages[0], bounds, targetModel, placementOptions)
+        } else if (typeof placer.placeBatchToCurrentDocAtSelection === "function") {
+          await placer.placeBatchToCurrentDocAtSelection(generatedImages, bounds, targetModel, placementOptions)
+        } else {
+          for (const generatedBase64 of generatedImages) {
+            await placer.placeToCurrentDocAtSelection(generatedBase64, bounds, targetModel, placementOptions)
+          }
+        }
+      } catch (error) {
+        if (error?.code === "HOST_MODAL_STATE") {
+          const deferred = await deferBatchPlacement(
+            "Photoshop is in modal state",
+            generatedImages,
+            requestDocument,
+            bounds,
+            targetModel,
+            placementOptions,
+            targetBatchCount,
+            true
+          )
+          if (!deferred && typeof logLine === "function") {
+            logLine(error.message || String(error))
+          }
+          return
+        }
+        throw error
       }
     } catch (error) {
       console.error("Error placing generated image to document: " + error)
@@ -574,7 +702,13 @@ function createGenerator({
       }
       setGenerateButtonIdle()
 
-      const message = createRunSummaryMessage(targetBatchCount, generatedImages.length, elapsedSeconds, targetModel)
+      const message = createRunSummaryMessage(
+        targetBatchCount,
+        generatedImages.length,
+        elapsedSeconds,
+        targetModel,
+        runState.wasCanceled
+      )
       console.log(message)
       if (typeof logLine === "function") {
         logLine(message)
@@ -584,7 +718,7 @@ function createGenerator({
 
   async function critique() {
     const targetModel = state.selectedModel;
-    const expectedModel = nanoBananaModelId || "gemini-3-pro-image-preview";
+    const expectedModel = nanoBananaModelId || "gemini-3-pro-image";
     if (targetModel !== expectedModel) {
       const message = "Chat critique currently supports Nano Banana Pro only.";
       core.showAlert(message);
@@ -649,6 +783,7 @@ function createGenerator({
         prompt,
         base64Image: base64Data,
         apiKey: state.apiKey,
+        googleApiBackend: state.googleApiBackend,
         logLine
       })) {
         if (!textChunk || !ui.chatOutput) {

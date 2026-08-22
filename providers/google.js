@@ -1,11 +1,21 @@
-const supportedModels = ["gemini-3-pro-image-preview", "gemini-3.1-flash-image-preview"];
+const supportedModels = ["gemini-3-pro-image", "gemini-3.1-flash-image-preview"];
 const VERTEX_API_ENDPOINT = "https://aiplatform.googleapis.com";
 const AI_STUDIO_API_ENDPOINT = "https://generativelanguage.googleapis.com";
 
-function getApiConfig(apiKey, modelId, apiName) {
+function shouldUseVertexApi(apiKeyValue, googleApiBackend = "auto") {
+  if (googleApiBackend === "vertex-ai") {
+    return true;
+  }
+  if (googleApiBackend === "google-ai-studio") {
+    return false;
+  }
+  return typeof apiKeyValue === "string" && apiKeyValue.startsWith("AQ");
+}
+
+function getApiConfig(apiKey, modelId, apiName, googleApiBackend = "auto") {
   const API_KEY = apiKey["NanoBananaPro-api-key"];
   const MODEL_ID = modelId || supportedModels[0];
-  const useVertexApi = typeof API_KEY === "string" && API_KEY.startsWith("AQ");
+  const useVertexApi = shouldUseVertexApi(API_KEY, googleApiBackend);
 
   const url = useVertexApi
     ? `${VERTEX_API_ENDPOINT}/v1/publishers/google/models/${MODEL_ID}:${apiName}?key=${API_KEY}`
@@ -20,15 +30,73 @@ function getApiConfig(apiKey, modelId, apiName) {
 }
 
 function getGenerationBackendName(options = {}) {
-  const { apiKey = {}, modelId } = options;
-  const { useVertexApi } = getApiConfig(apiKey, modelId, "generateContent");
+  const { apiKey = {}, modelId, googleApiBackend } = options;
+  const { useVertexApi } = getApiConfig(apiKey, modelId, "generateContent", googleApiBackend);
   return useVertexApi ? "Vertex AI" : "Google AI Studio";
 }
 
-function extractTextFromPayload(payload, modelId) {
-  if (payload?.promptFeedback?.blockReasonMessage) {
-    throw new Error("Prompt was blocked: " + payload.promptFeedback.blockReasonMessage);
+function extractPromptBlockMessage(promptFeedback) {
+  const blockReasonMessage = typeof promptFeedback?.blockReasonMessage === "string"
+    ? promptFeedback.blockReasonMessage.trim()
+    : "";
+  if (blockReasonMessage.length > 0) {
+    return "Prompt was blocked: " + blockReasonMessage;
   }
+
+  const blockReason = typeof promptFeedback?.blockReason === "string"
+    ? promptFeedback.blockReason.trim()
+    : "";
+  if (blockReason.length > 0) {
+    return "Prompt was blocked: " + blockReason;
+  }
+
+  return "";
+}
+
+function extractPayloadErrorMessage(payload) {
+  if (!payload) {
+    return "";
+  }
+
+  const promptBlockMessage = extractPromptBlockMessage(payload.promptFeedback);
+  if (promptBlockMessage) {
+    return promptBlockMessage;
+  }
+
+  if (payload?.error?.message) {
+    return payload.error.message;
+  }
+
+  if (typeof payload?.error === "string") {
+    return payload.error;
+  }
+
+  return "";
+}
+
+function extractResponseErrorMessage(responseText) {
+  if (typeof responseText !== "string") {
+    return "";
+  }
+  const trimmed = responseText.trim();
+  if (trimmed.length === 0) {
+    return "";
+  }
+
+  try {
+    const payload = JSON.parse(trimmed);
+    return extractPayloadErrorMessage(payload) || trimmed;
+  } catch {
+    return trimmed;
+  }
+}
+
+function extractTextFromPayload(payload, modelId) {
+  const payloadErrorMessage = extractPayloadErrorMessage(payload);
+  if (payloadErrorMessage) {
+    throw new Error(payloadErrorMessage);
+  }
+
   const parts = payload?.candidates?.flatMap(candidate => candidate?.content?.parts || []);
   const textParts = parts
     .map(part => part?.text)
@@ -49,14 +117,6 @@ function extractTextFromPayload(payload, modelId) {
 
   if (typeof payload === "string" && payload.length > 0) {
     return [payload];
-  }
-
-  if (payload?.error?.message) {
-    throw new Error(payload.error.message);
-  }
-
-  if (typeof payload?.error === "string") {
-    throw new Error(payload.error);
   }
 
   return [];
@@ -186,6 +246,7 @@ async function generateImage(options) {
     temperature,
     topP,
     modelId,
+    googleApiBackend,
     logLine,
     textToImage = false,
     signal
@@ -202,7 +263,7 @@ async function generateImage(options) {
   const API_KEY = apiKey["NanoBananaPro-api-key"];
   const MODEL_ID = modelId || supportedModels[0];
   const GENERATE_CONTENT_API = "generateContent";
-  const { useVertexApi, url } = getApiConfig(apiKey, MODEL_ID, GENERATE_CONTENT_API);
+  const { useVertexApi, url } = getApiConfig(apiKey, MODEL_ID, GENERATE_CONTENT_API, googleApiBackend);
   const safeTemperature = Number.isFinite(temperature) ? temperature : 1.0;
   const safeTopP = Number.isFinite(topP) ? topP : 0.90;
 
@@ -283,7 +344,9 @@ async function generateImage(options) {
     if (!response.ok) {
       const errorData = await response.text();
       console.error(`HTTP error! status: ${response.status}`, errorData);
-      throw new Error(`API call failed with status ${response.status} ${response.statusText}`);
+      const statusMessage = `API call failed with status ${response.status} ${response.statusText}`;
+      const serverMessage = extractResponseErrorMessage(errorData);
+      throw new Error(serverMessage ? `${statusMessage}: ${serverMessage}` : statusMessage);
     }
 
     let json;
@@ -293,12 +356,13 @@ async function generateImage(options) {
       }
       console.log("Parsing json from server's response.");
       json = await response.json();
-      if (json.promptFeedback?.blockReasonMessage) {
-        console.log(json.promptFeedback.blockReasonMessage);
+      const payloadErrorMessage = extractPayloadErrorMessage(json);
+      if (payloadErrorMessage) {
+        console.log(payloadErrorMessage);
         if (typeof logLine === "function") {
-          logLine(json.promptFeedback.blockReasonMessage);
+          logLine(payloadErrorMessage);
         }
-        throw new Error("Prompt was blocked: " + json.promptFeedback.blockReasonMessage);
+        throw new Error(payloadErrorMessage);
       }
 
       console.log("parsed response JSON:", json);
@@ -331,6 +395,7 @@ async function* critiqueImageStream(options) {
     base64Image,
     apiKey,
     modelId,
+    googleApiBackend,
     logLine
   } = options || {};
 
@@ -342,7 +407,7 @@ async function* critiqueImageStream(options) {
   }
 
   const MODEL_ID = modelId || supportedModels[0];
-  const { API_KEY, useVertexApi, url } = getApiConfig(apiKey, MODEL_ID, "streamGenerateContent");
+  const { API_KEY, useVertexApi, url } = getApiConfig(apiKey, MODEL_ID, "streamGenerateContent", googleApiBackend);
   const requestBody = {
     contents: [
       {

@@ -99,6 +99,36 @@ textarea {
   width: 219px;
 }
 
+#deferredBatchList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 219px;
+}
+
+.deferredBatchItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.deferredBatchInsertButton {
+  min-width: 24px;
+  width: 24px;
+  font-size: 15px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.deferredBatchText {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  white-space: normal;
+}
+
 .right {
   display: flex;
   /* width: 220px; */
@@ -108,6 +138,8 @@ textarea {
 
 #generate,
 #openImageFolder,
+#exportPromptLibrary,
+#importPromptLibrary,
 #update-api-key,
 #clear,
 #clearLog,

@@ -1,4 +1,12 @@
+const { normalizeGroupColorLabel, toActionManagerColorValue } = require("../group-color-labels");
+
 function createPlacer({ app, core, constants, fs, imaging, base64ToArrayBuffer, logLine }) {
+  function createModalPlacementError() {
+    const error = new Error("Cannot place generated image because Photoshop is in modal state.");
+    error.code = "HOST_MODAL_STATE";
+    return error;
+  }
+
   function base64ToBuffer(base64) {
     const buffer = base64ToArrayBuffer(base64)
     const bytes = new Uint8Array(buffer)
@@ -84,60 +92,63 @@ function createPlacer({ app, core, constants, fs, imaging, base64ToArrayBuffer, 
     return layerSuffix
   }
 
-  async function placeFileToCurrentDocAtSelection(targetFile, bounds, suffix = "", options = {}) {
+  async function placePreparedFileToCurrentDocAtSelection(targetFile, bounds, suffix = "", options = {}) {
     let placedLayer = null
-    try {
-      await core.executeAsModal(async () => {
-        const sessionToken = fs.createSessionToken(targetFile)
-        console.log("session token created: " + sessionToken)
-        const placeCommand = {
-          _obj: "placeEvent",
-          null: { _path: sessionToken, _kind: "local" },
-          linked: false
-        }
-
-        await app.batchPlay(
-          [
-            ...buildSelectionCommands(bounds),
-            placeCommand
-          ],
-          { synchronousExecution: true }
-        )
-
-        const layers = app.activeDocument.layers
-        placedLayer = app.activeDocument.activeLayers[0]
-
-        if (!placedLayer) {
-          console.error("NO LAYER PLACED WHY?")
-          if (typeof logLine === "function") {
-            logLine("Error: no layer placed after batchPlay!")
-          }
-          return
-        }
-
-        placedLayer.scale(
-          bounds.width / placedLayer.bounds.width * 100,
-          bounds.height / placedLayer.bounds.height * 100
-        )
-
-        if (app.activeDocument.layers[0]) {
-          placedLayer.move(app.activeDocument.layers[0], constants.ElementPlacement.PLACEBEFORE)
-        }
-
-        const layerSuffix = findLayerSuffix(layers)
-        placedLayer.name = suffix
-          ? `Generated Image ${layerSuffix} - ${suffix}`
-          : `Generated Image ${layerSuffix}`
-
-        await applyMaskWithGaussianBlur(placedLayer, bounds, options.skipMask, 0.10, true)
-      })
-    } catch (error) {
-      if (error?.message?.includes("modal state")) {
-        if (typeof logLine === "function") {
-          logLine("Cannot place the generated image because host is in modal state, but the file has been saved. Check the log for path of the file.")
-        }
+    const placeFile = async () => {
+      const sessionToken = fs.createSessionToken(targetFile)
+      console.log("session token created: " + sessionToken)
+      const placeCommand = {
+        _obj: "placeEvent",
+        null: { _path: sessionToken, _kind: "local" },
+        linked: false
       }
-      console.error(error)
+
+      await app.batchPlay(
+        [
+          ...buildSelectionCommands(bounds),
+          placeCommand
+        ],
+        { synchronousExecution: true }
+      )
+
+      const layers = app.activeDocument.layers
+      placedLayer = app.activeDocument.activeLayers[0]
+
+      if (!placedLayer) {
+        console.error("NO LAYER PLACED WHY?")
+        if (typeof logLine === "function") {
+          logLine("Error: no layer placed after batchPlay!")
+        }
+        return
+      }
+
+      placedLayer.scale(
+        bounds.width / placedLayer.bounds.width * 100,
+        bounds.height / placedLayer.bounds.height * 100
+      )
+
+      if (app.activeDocument.layers[0]) {
+        placedLayer.move(app.activeDocument.layers[0], constants.ElementPlacement.PLACEBEFORE)
+      }
+
+      const layerSuffix = findLayerSuffix(layers)
+      placedLayer.name = suffix
+        ? `Generated Image ${layerSuffix} - ${suffix}`
+        : `Generated Image ${layerSuffix}`
+
+      await applyMaskWithGaussianBlur(placedLayer, bounds, options.skipMask, 0.10, true)
+    }
+
+    try {
+      await core.executeAsModal(placeFile)
+    } catch (error) {
+      if (error?.code === "HOST_MODAL_STATE") {
+        throw error
+      }
+      if (String(error?.message || "").includes("modal state")) {
+        throw createModalPlacementError()
+      }
+      throw error
     }
     return placedLayer
   }
@@ -156,6 +167,59 @@ function createPlacer({ app, core, constants, fs, imaging, base64ToArrayBuffer, 
     return suffix ? `Generated Batch - ${suffix}` : "Generated Batch"
   }
 
+  async function setLayerColorLabel(layerId, colorLabel) {
+    const normalized = normalizeGroupColorLabel(colorLabel)
+    await app.batchPlay([
+      {
+        _obj: "set",
+        _target: [
+          {
+            _ref: "layer",
+            _id: layerId
+          }
+        ],
+        to: {
+          _obj: "layer",
+          color: {
+            _enum: "color",
+            _value: toActionManagerColorValue(normalized)
+          }
+        }
+      }
+    ], { synchronousExecution: true })
+  }
+
+  async function groupPlacedLayers(placedLayerIds, suffix = "", options = {}) {
+    if (placedLayerIds.length <= 1) {
+      return
+    }
+
+    try {
+      await core.executeAsModal(async () => {
+        const fromLayers = placedLayerIds
+          .map(layerId => findDocumentLayerById(layerId))
+          .filter(Boolean)
+        if (fromLayers.length > 1) {
+          const createdGroup = await app.activeDocument.createLayerGroup({
+            name: createBatchGroupName(suffix),
+            fromLayers
+          })
+          if (options.enableGeneratedGroupColorLabel === true && createdGroup?.id) {
+            await setLayerColorLabel(createdGroup.id, options.generatedGroupColorLabel)
+          }
+        }
+      })
+    } catch (error) {
+      if (String(error?.message || "").includes("modal state")) {
+        throw createModalPlacementError()
+      }
+      console.error("Error creating generated layer group:", error)
+      if (typeof logLine === "function") {
+        logLine("Error creating generated layer group: " + (error?.message || String(error)))
+      }
+    }
+  }
+
   async function placeToCurrentDocAtSelection(base64, bounds, suffix = "", options = {}) {
     if (!base64 || base64?.length === 0) {
       console.log("No base64 data to place.")
@@ -163,7 +227,7 @@ function createPlacer({ app, core, constants, fs, imaging, base64ToArrayBuffer, 
     }
 
     const targetFile = await writeBase64ToTargetFile(base64, options)
-    return placeFileToCurrentDocAtSelection(targetFile, bounds, suffix, options)
+    return placePreparedFileToCurrentDocAtSelection(targetFile, bounds, suffix, options)
   }
 
   async function placeBatchToCurrentDocAtSelection(base64Images, bounds, suffix = "", options = {}) {
@@ -182,33 +246,13 @@ function createPlacer({ app, core, constants, fs, imaging, base64ToArrayBuffer, 
 
     const placedLayerIds = []
     for (const targetFile of targetFiles) {
-      const placedLayer = await placeFileToCurrentDocAtSelection(targetFile, bounds, suffix, options)
+      const placedLayer = await placePreparedFileToCurrentDocAtSelection(targetFile, bounds, suffix, options)
       if (placedLayer?.id) {
         placedLayerIds.push(placedLayer.id)
       }
     }
 
-    if (placedLayerIds.length > 1) {
-      try {
-        await core.executeAsModal(async () => {
-          const fromLayers = placedLayerIds
-            .map(layerId => findDocumentLayerById(layerId))
-            .filter(Boolean)
-          if (fromLayers.length > 1) {
-            await app.activeDocument.createLayerGroup({
-              name: createBatchGroupName(suffix),
-              fromLayers
-            })
-          }
-        })
-      } catch (error) {
-        console.error("Error creating generated layer group:", error)
-        if (typeof logLine === "function") {
-          logLine("Error creating generated layer group: " + (error?.message || String(error)))
-        }
-      }
-    }
-
+    await groupPlacedLayers(placedLayerIds, suffix, options)
     return placedLayerIds
   }
 

@@ -5,12 +5,14 @@ const imaging = require("photoshop").imaging;
 const fs = require("uxp").storage.localFileSystem;
 
 const utils = require("./utils");
+const { serializePromptLibrary, parsePromptLibraryJson } = require("./prompt-library");
 const { generateWithProvider, critiqueWithProvider } = require("./providers/index.js");
 const { createSelection } = require("./photoshop/selection");
 const { createPlacer } = require("./photoshop/place");
 const { createLogger } = require("./log");
 const storage = require("./storage");
 const { getUI } = require("./ui");
+const { createDeferredBatchManager } = require("./deferred-batches");
 const {
   SEEDREAM,
   SEEDREAM_5,
@@ -31,13 +33,10 @@ if (ui.modelPicker) {
   ui.modelPicker.value = NANOBANANA_PRO;
 }
 
+const logger = createLogger(ui);
 const apiKey = storage.loadApiKeys(localStorage, DEFAULT_API_KEYS);
 const promptPresets = storage.loadPromptPresets(localStorage, DEFAULT_PROMPT_PRESETS);
 const pluginPrefs = storage.loadPluginPrefs(localStorage, DEFAULT_PLUGIN_PREFS);
-
-const state = createState({ ui, apiKey, promptPresets, pluginPrefs });
-
-const logger = createLogger(ui);
 const selection = createSelection({ app, constants, core, imaging, logLine: logger.logLine });
 const placer = createPlacer({
   app,
@@ -47,6 +46,21 @@ const placer = createPlacer({
   imaging,
   base64ToArrayBuffer: utils.base64ToArrayBuffer,
   logLine: logger.logLine
+});
+const deferredBatchManager = createDeferredBatchManager({
+  fs,
+  app,
+  placer,
+  storageBackend: localStorage,
+  logLine: logger.logLine
+});
+
+const state = createState({
+  ui,
+  apiKey,
+  promptPresets,
+  pluginPrefs,
+  pendingBatchPlacements: deferredBatchManager.getPendingBatches()
 });
 
 const generator = createGenerator({
@@ -58,6 +72,7 @@ const generator = createGenerator({
   placer,
   generateWithProvider,
   critiqueWithProvider,
+  deferredBatchManager,
   logLine: logger.logLine,
   utils,
   seedreamModelId: [SEEDREAM, SEEDREAM_5],
@@ -73,6 +88,44 @@ async function openImageFolder() {
     throw new Error(result);
   }
   return folder.nativePath;
+}
+
+function getSingleFile(fileOrFiles) {
+  if (Array.isArray(fileOrFiles)) {
+    return fileOrFiles[0];
+  }
+  return fileOrFiles;
+}
+
+async function exportPromptLibrary(promptPresets) {
+  const file = await fs.getFileForSaving("prompt-library.json", { types: ["json"] });
+  if (!file) {
+    return { cancelled: true };
+  }
+
+  const payload = serializePromptLibrary(promptPresets);
+  await file.write(payload);
+  return {
+    cancelled: false,
+    filePath: file.nativePath
+  };
+}
+
+async function importPromptLibrary() {
+  const selected = await fs.getFileForOpening({ types: ["json"], allowMultiple: false });
+  const file = getSingleFile(selected);
+  if (!file) {
+    return { cancelled: true };
+  }
+
+  const content = await file.read();
+  const parsed = parsePromptLibraryJson(content);
+  return {
+    cancelled: false,
+    filePath: file.nativePath,
+    version: parsed.version,
+    presets: parsed.presets
+  };
 }
 
 entrypoints.setup({
@@ -101,9 +154,12 @@ bindEvents({
   storage,
   generator,
   openImageFolder,
+  exportPromptLibrary,
+  importPromptLibrary,
   selection,
   app,
   core,
   defaultPromptText: DEFAULT_PROMPT_PRESETS.default,
-  defaultChatPromptText: DEFAULT_CHAT_PROMPT
+  defaultChatPromptText: DEFAULT_CHAT_PROMPT,
+  deferredBatchManager
 });

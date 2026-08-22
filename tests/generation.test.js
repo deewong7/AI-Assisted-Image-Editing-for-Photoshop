@@ -59,6 +59,7 @@ test.describe("createGenerator", () => {
         persistGeneratedImages: false,
         showModelParameters: true,
         apiKey: { "NanoBananaPro-api-key": "KEY" },
+        googleApiBackend: "google-ai-studio",
         resolution: "2K",
         adaptiveResolutionSetting: false,
         currentJobCount: 0
@@ -84,15 +85,16 @@ test.describe("createGenerator", () => {
       },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     await generator.generate();
 
     assert.equal(providerCall.modelId, "gemini-3.1-flash-image-preview");
     assert.equal(providerCall.options.resolution, "2K");
+    assert.equal(providerCall.options.googleApiBackend, "google-ai-studio");
     assert.equal(
-      logs.some(line => line.includes("Fetching 2K image to gemini-3.1-flash-image-preview via Google AI Studio")),
+      logs.some(line => line.includes("Generating image at 2K with gemini-3.1-flash-image-preview via Google AI Studio")),
       true
     );
   });
@@ -167,8 +169,8 @@ test.describe("createGenerator", () => {
 
     assert.equal(providerCall.modelId, "grok-imagine-image");
     assert.equal(providerCall.options.resolution, "2K");
-    assert.equal(logs.some(line => line.includes("Fetching 2K image to grok-imagine-image")), true);
-    assert.equal(logs.some(line => line.includes("Fetching 2K image to grok-imagine-image via ")), false);
+    assert.equal(logs.some(line => line.includes("Generating image at 2K with grok-imagine-image")), true);
+    assert.equal(logs.some(line => line.includes("Generating image at 2K with grok-imagine-image via ")), false);
   });
 
   test("uses 3K adaptive resolution for SeeDream 5", async () => {
@@ -325,7 +327,7 @@ test.describe("createGenerator", () => {
       },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     const runPromise = generator.generate();
@@ -336,7 +338,7 @@ test.describe("createGenerator", () => {
     assert.equal(ui.generateButton.innerText, "Generating 0/4...");
     assert.equal(ui.jobCount.textContent, "Batch Progress: 0/4");
     assert.equal(
-      logs.some(line => line.includes("Fetching 2K image to gemini-3.1-flash-image-preview via Vertex AI")),
+      logs.some(line => line.includes("Generating 4 images at 2K with gemini-3.1-flash-image-preview via Vertex AI")),
       true
     );
 
@@ -446,7 +448,7 @@ test.describe("createGenerator", () => {
       },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     const runPromise = generator.generate();
@@ -469,6 +471,13 @@ test.describe("createGenerator", () => {
     assert.deepEqual(batchPlaceCalls[0].images, ["generated-b64-1", "generated-b64-3"]);
     assert.equal(batchPlaceCalls[0].suffix, "gemini-3.1-flash-image-preview");
     assert.equal(batchPlaceCalls[0].options.persistGeneratedImages, true);
+    assert.equal(
+      logs.filter(line =>
+        line.includes("Generating 4 images at 2K with gemini-3.1-flash-image-preview via Google AI Studio")
+      ).length,
+      1
+    );
+    assert.equal(logs.some(line => line.includes("Batch 1/4 started")), false);
     assert.equal(logs.some(line => line.includes("Batch 2/4 failed: provider failed")), true);
     assert.equal(logs.some(line => line.includes("2/4 succeeded, 2 failed")), true);
   });
@@ -545,7 +554,7 @@ test.describe("createGenerator", () => {
       },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     const runPromise = generator.generate();
@@ -572,8 +581,10 @@ test.describe("createGenerator", () => {
     assert.equal(ui.jobCount.textContent, "");
   });
 
-  test("turns generate button into cancel after timeout and aborts unfinished requests on cancel click", async () => {
+  test("turns generate button into cancel after timeout and discards all results on cancel click", async () => {
     const batchPlaceCalls = [];
+    const deferredCalls = [];
+    const logs = [];
     let timeoutHandler;
     let providerCallCount = 0;
     const ui = {
@@ -619,6 +630,7 @@ test.describe("createGenerator", () => {
         apiKey: { "NanoBananaPro-api-key": "KEY" },
         resolution: "2K",
         adaptiveResolutionSetting: false,
+        enableDeferredBatchRecovery: true,
         maxWaitingTimeSeconds: 120,
         currentJobCount: 0
       },
@@ -654,13 +666,29 @@ test.describe("createGenerator", () => {
         });
       },
       critiqueWithProvider: async function* () {},
-      logLine: () => {},
+      deferredBatchManager: {
+        async deferBatch(args) {
+          deferredCalls.push(args);
+          return {
+            id: "deferred-cancel-1",
+            docName: "Cover.psd",
+            successCount: args.successCount,
+            requestedCount: args.requestedCount
+          };
+        },
+        getPendingBatches() {
+          return [];
+        }
+      },
+      logLine: (...parts) => {
+        logs.push(parts.join(" "));
+      },
       utils: {
         pickTier: () => "2K"
       },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview",
+      nanoBananaModelId: "gemini-3-pro-image",
       setTimeoutImpl: (callback) => {
         timeoutHandler = callback;
         return 1;
@@ -680,10 +708,92 @@ test.describe("createGenerator", () => {
     generator.handleGenerateClick();
     await runPromise;
 
-    assert.equal(batchPlaceCalls.length, 1);
-    assert.deepEqual(batchPlaceCalls[0], ["generated-b64-1"]);
+    assert.equal(batchPlaceCalls.length, 0);
+    assert.equal(deferredCalls.length, 0);
+    assert.equal(logs.some(line => line.includes("Batch canceled after")), true);
+    assert.equal(logs.some(line => line.includes("1/3 succeeded")), false);
     assert.equal(ui.generateButton.innerText, "Generate");
     assert.equal(ui.generateButton.style.backgroundColor, "");
+  });
+
+  test("clamps runtime batch count to maxBatchCount", async () => {
+    let providerCallCount = 0;
+    const batchPlaceCalls = [];
+
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          selection: {
+            bounds: {
+              left: 0,
+              right: 100,
+              top: 0,
+              bottom: 100,
+              width: 100,
+              height: 100
+            }
+          }
+        }
+      },
+      core: {
+        showAlert: () => {}
+      },
+      ui: {
+        testCheckbox: { checked: false },
+        promptInput: { value: "batch prompt" },
+        generateButton: { disabled: false, innerText: "Generate" },
+        allowNSFW: { checked: false },
+        temperature: { value: "1.0" },
+        topP: { value: "0.90" },
+        imageToProcess: {},
+        jobCount: { style: { display: "none" }, textContent: "" }
+      },
+      state: {
+        selectedModel: "gemini-3.1-flash-image-preview",
+        aspectRatio: "3:4",
+        enableBatchGeneration: true,
+        batchCount: 12,
+        maxBatchCount: 3,
+        textToImage: false,
+        imageArray: [],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: false,
+        apiKey: { "NanoBananaPro-api-key": "KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: false,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {},
+        async placeBatchToCurrentDocAtSelection(images) {
+          batchPlaceCalls.push(images);
+        }
+      },
+      generateWithProvider: async () => {
+        providerCallCount += 1;
+        return "generated-b64-" + providerCallCount;
+      },
+      critiqueWithProvider: async function* () {},
+      logLine: () => {},
+      utils: {
+        pickTier: () => "2K"
+      },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image",
+      nanoBananaModelId: "gemini-3-pro-image"
+    });
+
+    await generator.generate();
+
+    assert.equal(providerCallCount, 3);
+    assert.equal(batchPlaceCalls.length, 1);
+    assert.deepEqual(batchPlaceCalls[0], ["generated-b64-1", "generated-b64-2", "generated-b64-3"]);
   });
 
   test("forces single-request behavior when batch generation is disabled", async () => {
@@ -758,7 +868,7 @@ test.describe("createGenerator", () => {
       },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     await generator.generate();
@@ -775,7 +885,7 @@ test.describe("createGenerator", () => {
     const pendingSelection = createDeferred();
 
     const state = {
-      selectedModel: "gemini-3-pro-image-preview",
+      selectedModel: "gemini-3-pro-image",
       aspectRatio: "default",
       textToImage: false,
       imageArray: ["ref-a"],
@@ -849,10 +959,310 @@ test.describe("createGenerator", () => {
     pendingSelection.resolve();
     await runPromise;
 
-    assert.equal(providerCall.modelId, "gemini-3-pro-image-preview");
-    assert.equal(placeCalls[0][2], "gemini-3-pro-image-preview");
+    assert.equal(providerCall.modelId, "gemini-3-pro-image");
+    assert.equal(placeCalls[0][2], "gemini-3-pro-image");
     assert.equal(placeCalls[0][3].persistGeneratedImages, true);
-    assert.equal(logs.some(line => line.includes("Job finished") && line.includes("gemini-3-pro-image-preview")), true);
+    assert.equal(logs.some(line => line.includes("Job finished") && line.includes("gemini-3-pro-image")), true);
+  });
+
+  test("queues finished results instead of auto-placing when manual insert mode is enabled", async () => {
+    const deferredCalls = [];
+    let placementCalls = 0;
+    const pendingEntries = [{
+      id: "deferred-manual-1",
+      docName: "Cover.psd",
+      successCount: 1,
+      requestedCount: 1
+    }];
+    const ui = {
+      testCheckbox: { checked: false },
+      promptInput: { value: "test prompt" },
+      generateButton: { disabled: false, innerText: "Generate", style: {} },
+      allowNSFW: { checked: false },
+      temperature: { value: "1.0" },
+      topP: { value: "0.90" },
+      imageToProcess: {},
+      deferredBatchList: {
+        style: { display: "none" },
+        innerHTML: ""
+      }
+    };
+
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          id: 10,
+          name: "Cover.psd",
+          selection: {
+            bounds: {
+              left: 0,
+              right: 100,
+              top: 0,
+              bottom: 100,
+              width: 100,
+              height: 100
+            }
+          }
+        }
+      },
+      core: {
+        showAlert: () => {}
+      },
+      ui,
+      state: {
+        selectedModel: "gemini-3-pro-image",
+        aspectRatio: "1:1",
+        textToImage: false,
+        imageArray: [],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: false,
+        apiKey: { "NanoBananaPro-api-key": "KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: false,
+        enableDeferredBatchRecovery: true,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {
+          placementCalls += 1;
+        }
+      },
+      generateWithProvider: async () => "generated-b64",
+      critiqueWithProvider: async function* () {},
+      deferredBatchManager: {
+        async deferBatch(args) {
+          deferredCalls.push(args);
+          return pendingEntries[0];
+        },
+        getPendingBatches() {
+          return pendingEntries;
+        }
+      },
+      logLine: () => {},
+      utils: {
+        pickTier: () => "2K"
+      },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image",
+      nanoBananaModelId: "gemini-3-pro-image"
+    });
+
+    await generator.generate();
+
+    assert.equal(placementCalls, 0);
+    assert.equal(deferredCalls.length, 1);
+    assert.equal(deferredCalls[0].requestDocument.id, 10);
+    assert.equal(ui.deferredBatchList.style.display, "");
+    assert.match(ui.deferredBatchList.innerHTML, /Cover\.psd/);
+  });
+
+  test("defers generated images when the active document changes before placement even if manual insert mode is disabled", async () => {
+    const deferredCalls = [];
+    let placementCalls = 0;
+    const pendingEntries = [{
+      id: "deferred-1",
+      docName: "Cover.psd",
+      successCount: 1,
+      requestedCount: 1
+    }];
+    const bounds = {
+      left: 0,
+      right: 100,
+      top: 0,
+      bottom: 100,
+      width: 100,
+      height: 100
+    };
+    const app = {
+      activeDocument: {
+        id: 10,
+        name: "Cover.psd",
+        selection: { bounds }
+      }
+    };
+    const ui = {
+      testCheckbox: { checked: false },
+      promptInput: { value: "test prompt" },
+      generateButton: { disabled: false, innerText: "Generate", style: {} },
+      allowNSFW: { checked: false },
+      temperature: { value: "1.0" },
+      topP: { value: "0.90" },
+      imageToProcess: {},
+      deferredBatchList: {
+        style: { display: "none" },
+        innerHTML: ""
+      }
+    };
+
+    const generator = createGenerator({
+      app,
+      core: {
+        showAlert: () => {}
+      },
+      ui,
+      state: {
+        selectedModel: "gemini-3-pro-image",
+        aspectRatio: "1:1",
+        textToImage: false,
+        imageArray: [],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: false,
+        apiKey: { "NanoBananaPro-api-key": "KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: false,
+        enableDeferredBatchRecovery: false,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {
+          placementCalls += 1;
+        }
+      },
+      generateWithProvider: async () => {
+        app.activeDocument = {
+          ...app.activeDocument,
+          id: 11,
+          name: "Other.psd"
+        };
+        return "generated-b64";
+      },
+      critiqueWithProvider: async function* () {},
+      deferredBatchManager: {
+        async deferBatch(args) {
+          deferredCalls.push(args);
+          return pendingEntries[0];
+        },
+        getPendingBatches() {
+          return pendingEntries;
+        }
+      },
+      logLine: () => {},
+      utils: {
+        pickTier: () => "2K"
+      },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image",
+      nanoBananaModelId: "gemini-3-pro-image"
+    });
+
+    await generator.generate();
+
+    assert.equal(placementCalls, 0);
+    assert.equal(deferredCalls.length, 1);
+    assert.equal(deferredCalls[0].requestDocument.id, 10);
+    assert.equal(deferredCalls[0].requestDocument.name, "Cover.psd");
+    assert.equal(ui.deferredBatchList.style.display, "");
+    assert.match(ui.deferredBatchList.innerHTML, /Cover\.psd/);
+    assert.match(ui.deferredBatchList.innerHTML, /1\/1/);
+  });
+
+  test("defers generated images when placement is blocked by modal state even if manual insert mode is disabled", async () => {
+    const deferredCalls = [];
+    const pendingEntries = [{
+      id: "deferred-2",
+      docName: "Cover.psd",
+      successCount: 1,
+      requestedCount: 1
+    }];
+    const modalError = new Error("blocked");
+    modalError.code = "HOST_MODAL_STATE";
+    const ui = {
+      testCheckbox: { checked: false },
+      promptInput: { value: "test prompt" },
+      generateButton: { disabled: false, innerText: "Generate", style: {} },
+      allowNSFW: { checked: false },
+      temperature: { value: "1.0" },
+      topP: { value: "0.90" },
+      imageToProcess: {},
+      deferredBatchList: {
+        style: { display: "none" },
+        innerHTML: ""
+      }
+    };
+
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          id: 10,
+          name: "Cover.psd",
+          selection: {
+            bounds: {
+              left: 0,
+              right: 100,
+              top: 0,
+              bottom: 100,
+              width: 100,
+              height: 100
+            }
+          }
+        }
+      },
+      core: {
+        showAlert: () => {}
+      },
+      ui,
+      state: {
+        selectedModel: "gemini-3-pro-image",
+        aspectRatio: "1:1",
+        textToImage: false,
+        imageArray: [],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: false,
+        apiKey: { "NanoBananaPro-api-key": "KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: false,
+        enableDeferredBatchRecovery: false,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {
+          throw modalError;
+        }
+      },
+      generateWithProvider: async () => "generated-b64",
+      critiqueWithProvider: async function* () {},
+      deferredBatchManager: {
+        async deferBatch(args) {
+          deferredCalls.push(args);
+          return pendingEntries[0];
+        },
+        getPendingBatches() {
+          return pendingEntries;
+        }
+      },
+      logLine: () => {},
+      utils: {
+        pickTier: () => "2K"
+      },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image",
+      nanoBananaModelId: "gemini-3-pro-image"
+    });
+
+    await generator.generate();
+
+    assert.equal(deferredCalls.length, 1);
+    assert.equal(deferredCalls[0].requestDocument.id, 10);
+    assert.equal(ui.deferredBatchList.style.display, "");
+    assert.match(ui.deferredBatchList.innerHTML, /Cover\.psd/);
   });
 
   test("critique uses selection bounds when selection exists", async () => {
@@ -887,7 +1297,7 @@ test.describe("createGenerator", () => {
       },
       ui,
       state: {
-        selectedModel: "gemini-3-pro-image-preview",
+        selectedModel: "gemini-3-pro-image",
         currentJobCount: 0
       },
       selection: {
@@ -906,7 +1316,7 @@ test.describe("createGenerator", () => {
       utils: { pickTier: () => "2K" },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     await generator.critique();
@@ -943,7 +1353,7 @@ test.describe("createGenerator", () => {
         chatImageToProcess: {}
       },
       state: {
-        selectedModel: "gemini-3-pro-image-preview",
+        selectedModel: "gemini-3-pro-image",
         currentJobCount: 0
       },
       selection: {
@@ -961,7 +1371,7 @@ test.describe("createGenerator", () => {
       utils: { pickTier: () => "2K" },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     await generator.critique();
@@ -1008,7 +1418,7 @@ test.describe("createGenerator", () => {
       },
       ui,
       state: {
-        selectedModel: "gemini-3-pro-image-preview",
+        selectedModel: "gemini-3-pro-image",
         currentJobCount: 0
       },
       selection: {
@@ -1027,7 +1437,7 @@ test.describe("createGenerator", () => {
       utils: { pickTier: () => "2K" },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     const running = generator.critique();
@@ -1082,7 +1492,7 @@ test.describe("createGenerator", () => {
       utils: { pickTier: () => "2K" },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     await generator.critique();
@@ -1132,7 +1542,7 @@ test.describe("createGenerator", () => {
       utils: { pickTier: () => "2K" },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     await generator.critique();

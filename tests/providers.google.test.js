@@ -20,6 +20,26 @@ test.describe("getGenerationBackendName (google)", () => {
 
     assert.equal(backendName, "Google AI Studio");
   });
+
+  test("returns explicit Google AI Studio even when API key starts with AQ", () => {
+    const backendName = getGenerationBackendName({
+      apiKey: { "NanoBananaPro-api-key": "AQ_KEY" },
+      googleApiBackend: "google-ai-studio",
+      modelId: "gemini-3.1-flash-image-preview"
+    });
+
+    assert.equal(backendName, "Google AI Studio");
+  });
+
+  test("returns explicit Vertex AI even when API key does not start with AQ", () => {
+    const backendName = getGenerationBackendName({
+      apiKey: { "NanoBananaPro-api-key": "AIza_TEST_KEY" },
+      googleApiBackend: "vertex-ai",
+      modelId: "gemini-3.1-flash-image-preview"
+    });
+
+    assert.equal(backendName, "Vertex AI");
+  });
 });
 
 test.describe("generateImage (google)", () => {
@@ -233,6 +253,84 @@ test.describe("generateImage (google)", () => {
     assert.equal(body.generationConfig.imageConfig.personGeneration, undefined);
   });
 
+  test("uses explicit AI Studio endpoint when API key starts with AQ", async (t) => {
+    const originalFetch = global.fetch;
+    let lastCall;
+    global.fetch = async (url, options) => {
+      lastCall = { url, options };
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [{ inlineData: { data: "RESULT_AI_STUDIO_AQ" } }]
+              }
+            }
+          ]
+        })
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    const result = await generateImage({
+      prompt: "hello",
+      base64Image: "BASE",
+      apiKey: { "NanoBananaPro-api-key": "AQ_KEY" },
+      googleApiBackend: "google-ai-studio",
+      resolution: "2K",
+      modelId: "custom-model"
+    });
+
+    assert.equal(result, "RESULT_AI_STUDIO_AQ");
+    assert.equal(
+      lastCall.url,
+      "https://generativelanguage.googleapis.com/v1beta/models/custom-model:generateContent"
+    );
+    assert.equal(lastCall.options.headers["x-goog-api-key"], "AQ_KEY");
+  });
+
+  test("uses explicit Vertex endpoint when API key does not start with AQ", async (t) => {
+    const originalFetch = global.fetch;
+    let lastCall;
+    global.fetch = async (url, options) => {
+      lastCall = { url, options };
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [{ inlineData: { data: "RESULT_VERTEX_AI" } }]
+              }
+            }
+          ]
+        })
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    const result = await generateImage({
+      prompt: "hello",
+      base64Image: "BASE",
+      apiKey: { "NanoBananaPro-api-key": "AIza_TEST_KEY" },
+      googleApiBackend: "vertex-ai",
+      resolution: "2K",
+      modelId: "custom-model"
+    });
+
+    assert.equal(result, "RESULT_VERTEX_AI");
+    assert.equal(
+      lastCall.url,
+      "https://aiplatform.googleapis.com/v1/publishers/google/models/custom-model:generateContent?key=AIza_TEST_KEY"
+    );
+    assert.equal(lastCall.options.headers["x-goog-api-key"], undefined);
+  });
+
   test("passes AbortSignal to fetch", async (t) => {
     const originalFetch = global.fetch;
     let lastCall;
@@ -288,6 +386,32 @@ test.describe("generateImage (google)", () => {
     );
   });
 
+  test("throws non-ok response with parsed server message", async (t) => {
+    const originalFetch = global.fetch;
+    global.fetch = async () => ({
+      ok: false,
+      status: 429,
+      statusText: "Too Many Requests",
+      text: async () => JSON.stringify({
+        error: {
+          message: "Rate limit reached"
+        }
+      })
+    });
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    await assert.rejects(
+      () => generateImage({
+        prompt: "hello",
+        base64Image: "BASE",
+        apiKey: { "NanoBananaPro-api-key": "KEY" }
+      }),
+      /API call failed with status 429 Too Many Requests: Rate limit reached/
+    );
+  });
+
   test("throws on prompt block", async (t) => {
     const originalFetch = global.fetch;
     global.fetch = async () => ({
@@ -307,6 +431,28 @@ test.describe("generateImage (google)", () => {
         apiKey: { "NanoBananaPro-api-key": "KEY" }
       }),
       /Prompt was blocked: blocked/
+    );
+  });
+
+  test("throws on prompt block reason without message", async (t) => {
+    const originalFetch = global.fetch;
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        promptFeedback: { blockReason: "PROHIBITED_CONTENT" }
+      })
+    });
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    await assert.rejects(
+      () => generateImage({
+        prompt: "hello",
+        base64Image: "BASE",
+        apiKey: { "NanoBananaPro-api-key": "KEY" }
+      }),
+      /Prompt was blocked: PROHIBITED_CONTENT/
     );
   });
 });
@@ -401,6 +547,74 @@ test.describe("critiqueImageStream (google)", () => {
     assert.equal(requestedUrl, "https://generativelanguage.googleapis.com/v1beta/models/custom-model:streamGenerateContent?alt=sse");
     assert.equal(requestedHeaders["x-goog-api-key"], "AIza_TEST_KEY");
     assert.deepEqual(chunks, ["a"]);
+  });
+
+  test("uses explicit AI studio stream endpoint when API key starts with AQ", async (t) => {
+    const originalFetch = global.fetch;
+    let requestedUrl;
+    let requestedHeaders;
+    global.fetch = async (url, options) => {
+      requestedUrl = url;
+      requestedHeaders = options?.headers;
+      return {
+        ok: true,
+        text: async () => `data: ${JSON.stringify({
+          candidates: [{ content: { parts: [{ text: "studio" }] } }]
+        })}\n\n`
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    const chunks = [];
+    for await (const chunk of critiqueImageStream({
+      prompt: "critique this",
+      base64Image: "BASE",
+      apiKey: { "NanoBananaPro-api-key": "AQ_KEY" },
+      googleApiBackend: "google-ai-studio",
+      modelId: "custom-model"
+    })) {
+      chunks.push(chunk);
+    }
+
+    assert.equal(requestedUrl, "https://generativelanguage.googleapis.com/v1beta/models/custom-model:streamGenerateContent?alt=sse");
+    assert.equal(requestedHeaders["x-goog-api-key"], "AQ_KEY");
+    assert.deepEqual(chunks, ["studio"]);
+  });
+
+  test("uses explicit Vertex stream endpoint when API key does not start with AQ", async (t) => {
+    const originalFetch = global.fetch;
+    let requestedUrl;
+    let requestedHeaders;
+    global.fetch = async (url, options) => {
+      requestedUrl = url;
+      requestedHeaders = options?.headers;
+      return {
+        ok: true,
+        text: async () => `data: ${JSON.stringify({
+          candidates: [{ content: { parts: [{ text: "vertex" }] } }]
+        })}\n\n`
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    const chunks = [];
+    for await (const chunk of critiqueImageStream({
+      prompt: "critique this",
+      base64Image: "BASE",
+      apiKey: { "NanoBananaPro-api-key": "AIza_TEST_KEY" },
+      googleApiBackend: "vertex-ai",
+      modelId: "custom-model"
+    })) {
+      chunks.push(chunk);
+    }
+
+    assert.equal(requestedUrl, "https://aiplatform.googleapis.com/v1/publishers/google/models/custom-model:streamGenerateContent?key=AIza_TEST_KEY&alt=sse");
+    assert.equal(requestedHeaders["x-goog-api-key"], undefined);
+    assert.deepEqual(chunks, ["vertex"]);
   });
 
   test("yields ordered text chunks from SSE stream", async (t) => {
@@ -513,6 +727,48 @@ test.describe("critiqueImageStream (google)", () => {
         }
       },
       /Prompt was blocked: blocked/
+    );
+  });
+
+  test("throws when stream reports blocked prompt reason without message", async (t) => {
+    const originalFetch = global.fetch;
+    global.fetch = async () => {
+      const encoder = new TextEncoder();
+      const chunks = [encoder.encode(`data: ${JSON.stringify({
+        promptFeedback: { blockReason: "PROHIBITED_CONTENT" }
+      })}\n\n`)];
+      let index = 0;
+      return {
+        ok: true,
+        body: {
+          getReader() {
+            return {
+              async read() {
+                if (index >= chunks.length) {
+                  return { done: true };
+                }
+                return { done: false, value: chunks[index++] };
+              }
+            };
+          }
+        }
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    await assert.rejects(
+      async () => {
+        for await (const _chunk of critiqueImageStream({
+          prompt: "critique this",
+          base64Image: "BASE",
+          apiKey: { "NanoBananaPro-api-key": "AQ_KEY" }
+        })) {
+          // no-op
+        }
+      },
+      /Prompt was blocked: PROHIBITED_CONTENT/
     );
   });
 });

@@ -3,14 +3,22 @@ const {
   populatePromptPresets,
   clearImagePreview,
   appendReferencePreview,
-  clearReferencePreview
+  clearReferencePreview,
+  renderDeferredBatchPlacements
 } = require("./ui");
+const { DEFAULT_MAX_BATCH_COUNT, clampMaxBatchCount, clampBatchCount } = require("./limits");
+const { normalizeGroupColorLabel } = require("./group-color-labels");
 
 const KEY_MAP = [
   { fieldKey: "apiKeyGoogle", keyName: "NanoBananaPro-api-key" },
   { fieldKey: "apiKeyBytedance", keyName: "SeeDream-api-key" },
   { fieldKey: "apiKeyXai", keyName: "xAI-api-key" }
 ];
+const GOOGLE_API_BACKENDS = new Set(["auto", "google-ai-studio", "vertex-ai"]);
+
+function normalizeGoogleApiBackend(value) {
+  return GOOGLE_API_BACKENDS.has(value) ? value : "auto";
+}
 
 function updateApiKey(ui, state, storage, update = true) {
   let changed = false;
@@ -50,21 +58,18 @@ function applyCritiquePromptEditState(ui, defaultChatPromptText = "") {
   }
 }
 
-function syncBatchCountSelection(ui, count = 1) {
-  if (!ui.batchCountPicker) return;
+function syncBatchCountSlider(ui, count = 1, maxBatchCount = DEFAULT_MAX_BATCH_COUNT) {
+  if (!ui.batchCountSlider) return;
 
-  const normalizedCount = String(Math.min(4, Math.max(1, Number(count) || 1)));
-  ui.batchCountPicker.value = normalizedCount;
-
-  const menuItems = typeof ui.batchCountPicker.querySelectorAll === "function"
-    ? ui.batchCountPicker.querySelectorAll("sp-menu-item")
-    : [];
-  menuItems.forEach(item => {
-    item.selected = item.value === normalizedCount;
-  });
+  const normalizedMax = clampMaxBatchCount(maxBatchCount);
+  const normalizedCount = clampBatchCount(count, normalizedMax);
+  ui.batchCountSlider.min = "1";
+  ui.batchCountSlider.max = String(normalizedMax);
+  ui.batchCountSlider.value = String(normalizedCount);
 }
 
 function applyBatchGenerationState(ui, state) {
+  state.maxBatchCount = clampMaxBatchCount(state.maxBatchCount);
   const enabled = state.enableBatchGeneration === true;
   if (ui.enableBatchGeneration) {
     ui.enableBatchGeneration.checked = enabled;
@@ -74,9 +79,21 @@ function applyBatchGenerationState(ui, state) {
   }
   if (!enabled) {
     state.batchCount = 1;
-    syncBatchCountSelection(ui, 1);
+    syncBatchCountSlider(ui, 1, state.maxBatchCount);
   } else {
-    syncBatchCountSelection(ui, state.batchCount);
+    state.batchCount = clampBatchCount(state.batchCount, state.maxBatchCount);
+    syncBatchCountSlider(ui, state.batchCount, state.maxBatchCount);
+  }
+}
+
+function applyGeneratedGroupColorLabelState(ui, state) {
+  const enabled = state.enableGeneratedGroupColorLabel === true;
+  if (ui.enableGeneratedGroupColorLabel) {
+    ui.enableGeneratedGroupColorLabel.checked = enabled;
+  }
+  if (ui.generatedGroupColorLabel) {
+    ui.generatedGroupColorLabel.disabled = !enabled;
+    ui.generatedGroupColorLabel.value = normalizeGroupColorLabel(state.generatedGroupColorLabel);
   }
 }
 
@@ -139,12 +156,26 @@ function applyChatTabVisibility(ui, state) {
 }
 
 function savePluginPrefsState(storage, state) {
+  const maxBatchCount = clampMaxBatchCount(state.maxBatchCount);
+  const generatedGroupColorLabel = normalizeGroupColorLabel(state.generatedGroupColorLabel);
   storage.savePluginPrefs(localStorage, {
     persistGeneratedImages: state.persistGeneratedImages === true,
     enableBatchGeneration: state.enableBatchGeneration === true,
     showChatTab: state.showChatTab !== false,
-    maxWaitingTimeSeconds: normalizeMaxWaitingTimeSeconds(state.maxWaitingTimeSeconds)
+    googleApiBackend: normalizeGoogleApiBackend(state.googleApiBackend),
+    maxWaitingTimeSeconds: normalizeMaxWaitingTimeSeconds(state.maxWaitingTimeSeconds),
+    maxBatchCount,
+    enableGeneratedGroupColorLabel: state.enableGeneratedGroupColorLabel === true,
+    generatedGroupColorLabel,
+    enableDeferredBatchRecovery: state.enableDeferredBatchRecovery === true
   });
+}
+
+function normalizePromptPresetMap(presets) {
+  if (!presets || typeof presets !== "object" || Array.isArray(presets)) {
+    return {};
+  }
+  return presets;
 }
 
 function initializeUI({ ui, state, models, logger, storage, defaultChatPromptText = "" }) {
@@ -160,13 +191,42 @@ function initializeUI({ ui, state, models, logger, storage, defaultChatPromptTex
   if (ui.persistGeneratedImages) {
     ui.persistGeneratedImages.checked = state.persistGeneratedImages === true;
   }
+  state.googleApiBackend = normalizeGoogleApiBackend(state.googleApiBackend);
+  if (ui.googleApiBackend) {
+    ui.googleApiBackend.value = state.googleApiBackend;
+  }
+  if (ui.enableDeferredBatchRecovery) {
+    ui.enableDeferredBatchRecovery.checked = state.enableDeferredBatchRecovery === true;
+  }
   state.maxWaitingTimeSeconds = normalizeMaxWaitingTimeSeconds(state.maxWaitingTimeSeconds);
   if (ui.maxWaitingTimeSlider) {
     ui.maxWaitingTimeSlider.value = String(state.maxWaitingTimeSeconds);
   }
+  state.maxBatchCount = clampMaxBatchCount(state.maxBatchCount);
+  if (ui.maxBatchCountSlider) {
+    ui.maxBatchCountSlider.value = String(state.maxBatchCount);
+  }
+  state.batchCount = clampBatchCount(state.batchCount, state.maxBatchCount);
+  syncBatchCountSlider(ui, state.batchCount, state.maxBatchCount);
+  state.generatedGroupColorLabel = normalizeGroupColorLabel(state.generatedGroupColorLabel);
+  applyGeneratedGroupColorLabelState(ui, state);
   applyBatchGenerationState(ui, state);
   applyChatTabVisibility(ui, state);
   applyCritiquePromptEditState(ui, defaultChatPromptText);
+  renderDeferredBatchPlacements(ui, state.pendingBatchPlacements);
+}
+
+function getDeferredBatchIdFromTarget(target) {
+  if (!target) {
+    return "";
+  }
+  if (target.dataset?.batchId) {
+    return target.dataset.batchId;
+  }
+  if (typeof target.closest === "function") {
+    return target.closest("[data-batch-id]")?.dataset?.batchId || "";
+  }
+  return "";
 }
 
 function bindEvents({
@@ -177,11 +237,14 @@ function bindEvents({
   storage,
   generator,
   openImageFolder,
+  exportPromptLibrary,
+  importPromptLibrary,
   selection,
   app,
   core,
   defaultPromptText,
-  defaultChatPromptText = ""
+  defaultChatPromptText = "",
+  deferredBatchManager
 }) {
   const logLine = logger.logLine;
 
@@ -210,10 +273,10 @@ function bindEvents({
     });
   }
 
-  if (ui.batchCountPicker) {
-    ui.batchCountPicker.addEventListener("change", (e) => {
-      state.batchCount = Math.min(4, Math.max(1, Number(e.target.value) || 1));
-      syncBatchCountSelection(ui, state.batchCount);
+  if (ui.batchCountSlider) {
+    ui.batchCountSlider.addEventListener("change", (e) => {
+      state.batchCount = clampBatchCount(e.target.value, state.maxBatchCount);
+      syncBatchCountSlider(ui, state.batchCount, state.maxBatchCount);
       console.log("Update batch count to:", state.batchCount);
       logLine("Update batch count to:", state.batchCount);
     });
@@ -267,6 +330,78 @@ function bindEvents({
         core.showAlert("Failed to open image folder. Check log for details.");
       } finally {
         ui.openImageFolderButton.disabled = false;
+      }
+    });
+  }
+
+  if (ui.exportPromptLibraryButton && typeof exportPromptLibrary === "function") {
+    ui.exportPromptLibraryButton.addEventListener("click", async () => {
+      ui.exportPromptLibraryButton.disabled = true;
+      try {
+        const currentPresets = normalizePromptPresetMap(state.promptPresets);
+        const result = await exportPromptLibrary(currentPresets);
+        if (result?.cancelled) {
+          return;
+        }
+        if (typeof logLine === "function") {
+          logLine("Exported " + Object.keys(currentPresets).length + " prompt preset(s).");
+          if (result?.filePath) {
+            logLine("Prompt library exported to:\n" + result.filePath);
+          }
+        }
+      } catch (error) {
+        if (typeof logLine === "function") {
+          logLine("Failed to export prompt library: " + (error?.message || String(error)));
+        }
+        core.showAlert("Failed to export prompt library. Check log for details.");
+      } finally {
+        ui.exportPromptLibraryButton.disabled = false;
+      }
+    });
+  }
+
+  if (ui.importPromptLibraryButton && typeof importPromptLibrary === "function") {
+    ui.importPromptLibraryButton.addEventListener("click", async () => {
+      ui.importPromptLibraryButton.disabled = true;
+      try {
+        const result = await importPromptLibrary();
+        if (!result || result.cancelled) {
+          return;
+        }
+
+        const importedPresets = normalizePromptPresetMap(result.presets);
+        const importedKeys = Object.keys(importedPresets);
+        if (importedKeys.length === 0) {
+          throw new Error("No valid prompt presets found in selected file.");
+        }
+
+        const existingPresets = normalizePromptPresetMap(state.promptPresets);
+        const overwrittenCount = importedKeys.filter(key => Object.prototype.hasOwnProperty.call(existingPresets, key)).length;
+        state.promptPresets = {
+          ...existingPresets,
+          ...importedPresets
+        };
+        storage.savePromptPresets(localStorage, state.promptPresets);
+        populatePromptPresets(ui, state.promptPresets);
+        if (ui.promptPresetTextarea) {
+          ui.promptPresetTextarea.value = "";
+        }
+        if (ui.newPresetName) {
+          ui.newPresetName.value = "";
+        }
+        if (typeof logLine === "function") {
+          logLine("Imported " + importedKeys.length + " prompt preset(s) (" + overwrittenCount + " overwritten).");
+          if (result?.filePath) {
+            logLine("Prompt library imported from:\n" + result.filePath);
+          }
+        }
+      } catch (error) {
+        if (typeof logLine === "function") {
+          logLine("Failed to import prompt library: " + (error?.message || String(error)));
+        }
+        core.showAlert("Failed to import prompt library. Check log for details.");
+      } finally {
+        ui.importPromptLibraryButton.disabled = false;
       }
     });
   }
@@ -459,6 +594,13 @@ function bindEvents({
     });
   }
 
+  if (ui.enableDeferredBatchRecovery) {
+    ui.enableDeferredBatchRecovery.addEventListener("click", (e) => {
+      state.enableDeferredBatchRecovery = e.target.checked;
+      savePluginPrefsState(storage, state);
+    });
+  }
+
   if (ui.enableBatchGeneration) {
     ui.enableBatchGeneration.addEventListener("click", (e) => {
       state.enableBatchGeneration = e.target.checked;
@@ -467,10 +609,44 @@ function bindEvents({
     });
   }
 
+  if (ui.googleApiBackend) {
+    ui.googleApiBackend.addEventListener("change", (e) => {
+      state.googleApiBackend = normalizeGoogleApiBackend(e.target?.value);
+      ui.googleApiBackend.value = state.googleApiBackend;
+      savePluginPrefsState(storage, state);
+    });
+  }
+
   if (ui.maxWaitingTimeSlider) {
     ui.maxWaitingTimeSlider.addEventListener("change", (e) => {
       state.maxWaitingTimeSeconds = normalizeMaxWaitingTimeSeconds(e.target?.value);
       ui.maxWaitingTimeSlider.value = String(state.maxWaitingTimeSeconds);
+      savePluginPrefsState(storage, state);
+    });
+  }
+
+  if (ui.maxBatchCountSlider) {
+    ui.maxBatchCountSlider.addEventListener("change", (e) => {
+      state.maxBatchCount = clampMaxBatchCount(e.target?.value);
+      ui.maxBatchCountSlider.value = String(state.maxBatchCount);
+      state.batchCount = clampBatchCount(state.batchCount, state.maxBatchCount);
+      syncBatchCountSlider(ui, state.batchCount, state.maxBatchCount);
+      savePluginPrefsState(storage, state);
+    });
+  }
+
+  if (ui.enableGeneratedGroupColorLabel) {
+    ui.enableGeneratedGroupColorLabel.addEventListener("click", (e) => {
+      state.enableGeneratedGroupColorLabel = e.target.checked;
+      applyGeneratedGroupColorLabelState(ui, state);
+      savePluginPrefsState(storage, state);
+    });
+  }
+
+  if (ui.generatedGroupColorLabel) {
+    ui.generatedGroupColorLabel.addEventListener("change", (e) => {
+      state.generatedGroupColorLabel = normalizeGroupColorLabel(e.target?.value);
+      applyGeneratedGroupColorLabelState(ui, state);
       savePluginPrefsState(storage, state);
     });
   }
@@ -617,6 +793,61 @@ function bindEvents({
     ui.hidePromptPreset.addEventListener("click", (e) => {
       if (ui.promptManage) {
         ui.promptManage.style.display = e.target.checked ? "none" : "";
+      }
+    });
+  }
+
+  if (ui.deferredBatchList && deferredBatchManager && typeof deferredBatchManager.recoverBatch === "function") {
+    ui.deferredBatchList.addEventListener("click", async (e) => {
+      const batchId = getDeferredBatchIdFromTarget(e.target);
+      if (!batchId) {
+        return;
+      }
+
+      try {
+        const result = await deferredBatchManager.recoverBatch(batchId);
+        state.pendingBatchPlacements = typeof deferredBatchManager.getPendingBatches === "function"
+          ? deferredBatchManager.getPendingBatches()
+          : state.pendingBatchPlacements;
+        renderDeferredBatchPlacements(ui, state.pendingBatchPlacements);
+
+        if (result?.status === "placed") {
+          if (typeof logLine === "function") {
+            logLine(`Inserted deferred batch into ${result.entry.docName}.`);
+          }
+          return;
+        }
+
+        if (result?.status === "document_mismatch") {
+          const message = `Open ${result.entry.docName} and try again. Current document does not match the original request.`;
+          if (typeof logLine === "function") {
+            logLine(message);
+          }
+          core.showAlert(message);
+          return;
+        }
+
+        if (result?.status === "host_modal_state") {
+          const message = "Photoshop is still in modal state. Deferred batch was kept for later insertion.";
+          if (typeof logLine === "function") {
+            logLine(message);
+          }
+          core.showAlert(message);
+          return;
+        }
+
+        if (result?.status === "missing_payload") {
+          const message = "Deferred batch payload is missing and was removed from the queue.";
+          if (typeof logLine === "function") {
+            logLine(message);
+          }
+          core.showAlert(message);
+        }
+      } catch (error) {
+        if (typeof logLine === "function") {
+          logLine("Failed to insert deferred batch: " + (error?.message || String(error)));
+        }
+        core.showAlert("Failed to insert deferred batch. Check log for details.");
       }
     });
   }
