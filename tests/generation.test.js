@@ -85,7 +85,7 @@ test.describe("createGenerator", () => {
       },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     await generator.generate();
@@ -327,7 +327,7 @@ test.describe("createGenerator", () => {
       },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     const runPromise = generator.generate();
@@ -448,7 +448,7 @@ test.describe("createGenerator", () => {
       },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     const runPromise = generator.generate();
@@ -554,7 +554,7 @@ test.describe("createGenerator", () => {
       },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     const runPromise = generator.generate();
@@ -688,7 +688,7 @@ test.describe("createGenerator", () => {
       },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview",
+      nanoBananaModelId: "gemini-3-pro-image",
       setTimeoutImpl: (callback) => {
         timeoutHandler = callback;
         return 1;
@@ -786,7 +786,7 @@ test.describe("createGenerator", () => {
       },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     await generator.generate();
@@ -868,7 +868,7 @@ test.describe("createGenerator", () => {
       },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     await generator.generate();
@@ -885,7 +885,7 @@ test.describe("createGenerator", () => {
     const pendingSelection = createDeferred();
 
     const state = {
-      selectedModel: "gemini-3-pro-image-preview",
+      selectedModel: "gemini-3-pro-image",
       aspectRatio: "default",
       textToImage: false,
       imageArray: ["ref-a"],
@@ -959,10 +959,10 @@ test.describe("createGenerator", () => {
     pendingSelection.resolve();
     await runPromise;
 
-    assert.equal(providerCall.modelId, "gemini-3-pro-image-preview");
-    assert.equal(placeCalls[0][2], "gemini-3-pro-image-preview");
+    assert.equal(providerCall.modelId, "gemini-3-pro-image");
+    assert.equal(placeCalls[0][2], "gemini-3-pro-image");
     assert.equal(placeCalls[0][3].persistGeneratedImages, true);
-    assert.equal(logs.some(line => line.includes("Job finished") && line.includes("gemini-3-pro-image-preview")), true);
+    assert.equal(logs.some(line => line.includes("Job finished") && line.includes("gemini-3-pro-image")), true);
   });
 
   test("queues finished results instead of auto-placing when manual insert mode is enabled", async () => {
@@ -1010,7 +1010,7 @@ test.describe("createGenerator", () => {
       },
       ui,
       state: {
-        selectedModel: "gemini-3-pro-image-preview",
+        selectedModel: "gemini-3-pro-image",
         aspectRatio: "1:1",
         textToImage: false,
         imageArray: [],
@@ -1050,7 +1050,7 @@ test.describe("createGenerator", () => {
       },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     await generator.generate();
@@ -1107,7 +1107,7 @@ test.describe("createGenerator", () => {
       },
       ui,
       state: {
-        selectedModel: "gemini-3-pro-image-preview",
+        selectedModel: "gemini-3-pro-image",
         aspectRatio: "1:1",
         textToImage: false,
         imageArray: [],
@@ -1154,7 +1154,7 @@ test.describe("createGenerator", () => {
       },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     await generator.generate();
@@ -1214,7 +1214,7 @@ test.describe("createGenerator", () => {
       },
       ui,
       state: {
-        selectedModel: "gemini-3-pro-image-preview",
+        selectedModel: "gemini-3-pro-image",
         aspectRatio: "1:1",
         textToImage: false,
         imageArray: [],
@@ -1254,7 +1254,7 @@ test.describe("createGenerator", () => {
       },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     await generator.generate();
@@ -1297,7 +1297,7 @@ test.describe("createGenerator", () => {
       },
       ui,
       state: {
-        selectedModel: "gemini-3-pro-image-preview",
+        selectedModel: "gemini-3-pro-image",
         currentJobCount: 0
       },
       selection: {
@@ -1316,7 +1316,7 @@ test.describe("createGenerator", () => {
       utils: { pickTier: () => "2K" },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     await generator.critique();
@@ -1353,7 +1353,7 @@ test.describe("createGenerator", () => {
         chatImageToProcess: {}
       },
       state: {
-        selectedModel: "gemini-3-pro-image-preview",
+        selectedModel: "gemini-3-pro-image",
         currentJobCount: 0
       },
       selection: {
@@ -1371,7 +1371,7 @@ test.describe("createGenerator", () => {
       utils: { pickTier: () => "2K" },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     await generator.critique();
@@ -1418,7 +1418,7 @@ test.describe("createGenerator", () => {
       },
       ui,
       state: {
-        selectedModel: "gemini-3-pro-image-preview",
+        selectedModel: "gemini-3-pro-image",
         currentJobCount: 0
       },
       selection: {
@@ -1437,7 +1437,7 @@ test.describe("createGenerator", () => {
       utils: { pickTier: () => "2K" },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     const running = generator.critique();
@@ -1492,7 +1492,7 @@ test.describe("createGenerator", () => {
       utils: { pickTier: () => "2K" },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     await generator.critique();
@@ -1542,7 +1542,7 @@ test.describe("createGenerator", () => {
       utils: { pickTier: () => "2K" },
       seedreamModelId: ["seedream"],
       grokModelId: "grok-imagine-image",
-      nanoBananaModelId: "gemini-3-pro-image-preview"
+      nanoBananaModelId: "gemini-3-pro-image"
     });
 
     await generator.critique();

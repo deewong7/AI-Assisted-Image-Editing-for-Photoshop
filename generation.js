@@ -718,7 +718,7 @@ function createGenerator({
 
   async function critique() {
     const targetModel = state.selectedModel;
-    const expectedModel = nanoBananaModelId || "gemini-3-pro-image-preview";
+    const expectedModel = nanoBananaModelId || "gemini-3-pro-image";
     if (targetModel !== expectedModel) {
       const message = "Chat critique currently supports Nano Banana Pro only.";
       core.showAlert(message);

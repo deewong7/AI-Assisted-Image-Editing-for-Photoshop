@@ -83,7 +83,7 @@ test.describe("createDeferredBatchManager", () => {
       images: ["AAA", "BBB"],
       requestDocument: { id: 7, name: "Poster.psd" },
       bounds: createBounds(),
-      targetModel: "gemini-3-pro-image-preview",
+      targetModel: "gemini-3-pro-image",
       placementOptions: { skipMask: true },
       requestedCount: 4,
       successCount: 2
@@ -122,7 +122,7 @@ test.describe("createDeferredBatchManager", () => {
       images: ["AAA", "BBB"],
       requestDocument: { id: 11, name: "Poster.psd" },
       bounds: createBounds(),
-      targetModel: "gemini-3-pro-image-preview",
+      targetModel: "gemini-3-pro-image",
       placementOptions: { skipMask: true, persistGeneratedImages: false },
       requestedCount: 2,
       successCount: 2
@@ -139,7 +139,7 @@ test.describe("createDeferredBatchManager", () => {
     assert.equal(placedResult.status, "placed");
     assert.equal(batchPlaceCalls.length, 1);
     assert.deepEqual(batchPlaceCalls[0].images, ["AAA", "BBB"]);
-    assert.equal(batchPlaceCalls[0].suffix, "gemini-3-pro-image-preview");
+    assert.equal(batchPlaceCalls[0].suffix, "gemini-3-pro-image");
     assert.deepEqual(batchPlaceCalls[0].options, {
       skipMask: true,
       persistGeneratedImages: false,
@@ -170,7 +170,7 @@ test.describe("createDeferredBatchManager", () => {
       images: ["AAA"],
       requestDocument: { id: 15, name: "Poster.psd" },
       bounds: createBounds(),
-      targetModel: "gemini-3-pro-image-preview",
+      targetModel: "gemini-3-pro-image",
       placementOptions: {},
       requestedCount: 1,
       successCount: 1

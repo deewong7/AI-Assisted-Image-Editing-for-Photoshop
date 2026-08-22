@@ -1,6 +1,6 @@
 const SEEDREAM = "doubao-seedream-4-5-251128";
 const SEEDREAM_5 = "doubao-seedream-5-0-260128";
-const NANOBANANA_PRO = "gemini-3-pro-image-preview";
+const NANOBANANA_PRO = "gemini-3-pro-image";
 const NANOBANANA_2 = "gemini-3.1-flash-image-preview";
 const GROK_IMAGINE = "grok-imagine-image";
 const { DEFAULT_MAX_BATCH_COUNT, clampMaxBatchCount, clampBatchCount } = require("./limits");

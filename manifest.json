@@ -1,7 +1,7 @@
 {
   "id": "io.github.deewong7.blendrr",
   "name": "Blendrr",
-  "version": "0.2.9-alpha",
+  "version": "0.3.0-alpha",
   "main": "index.html",
   "host": {
     "app": "PS",
