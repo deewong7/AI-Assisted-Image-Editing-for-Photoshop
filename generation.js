@@ -399,16 +399,24 @@ function createGenerator({
     const targetModel = ui.testCheckbox?.checked ? "localtest" : state.selectedModel
     const bounds = createBoundsFromSelection(selectionData.bounds)
 
+    const resolutionCapOptions = {
+      allow4KGeneration: state.allow4KGeneration === true,
+      seedreamModelId,
+      seedream5ModelId,
+      seedream5ProModelId,
+      grokModelId
+    }
     if (state.adaptiveResolutionSetting) {
       const upgradeFactorValue = parseFloat(ui.upgradeFactorSlider?.value)
       state.upgradeFactor = Number.isFinite(upgradeFactorValue) ? upgradeFactorValue : 1.5
       state.resolution = utils.pickTier(Math.max(bounds.width, bounds.height), {
         upgradeFactor: state.upgradeFactor,
         selectedModel: targetModel,
-        seedreamModelId,
-        seedream5ModelId,
-        seedream5ProModelId
+        ...resolutionCapOptions
       })
+    }
+    if (typeof utils.capResolution === "function") {
+      state.resolution = utils.capResolution(state.resolution, targetModel, resolutionCapOptions)
     }
 
     const prompt = ui.promptInput?.value.trim()

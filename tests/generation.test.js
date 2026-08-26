@@ -330,6 +330,81 @@ test.describe("createGenerator", () => {
     assert.equal(providerCall.options.resolution, "2K");
   });
 
+  test("caps adaptive 4K to 2K when 4K generation is disabled", async () => {
+    let providerCall;
+    const utils = require("../utils.js");
+
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          selection: {
+            bounds: {
+              left: 0,
+              right: 4000,
+              top: 0,
+              bottom: 4000,
+              width: 4000,
+              height: 4000
+            }
+          }
+        }
+      },
+      core: {
+        showAlert: () => {}
+      },
+      ui: {
+        testCheckbox: { checked: false },
+        promptInput: { value: "test prompt" },
+        generateButton: { disabled: false, innerText: "Generate" },
+        allowNSFW: { checked: false },
+        temperature: { value: "1.0" },
+        topP: { value: "0.90" },
+        imageToProcess: {},
+        upgradeFactorSlider: { value: "1.5" }
+      },
+      state: {
+        selectedModel: "gemini-3-pro-image",
+        aspectRatio: "3:4",
+        textToImage: false,
+        imageArray: [],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: false,
+        allow4KGeneration: false,
+        apiKey: { "GoogleAIStudio-api-key": "KEY" },
+        resolution: "4K",
+        adaptiveResolutionSetting: true,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {}
+      },
+      generateWithProvider: async (modelId, options) => {
+        providerCall = { modelId, options };
+        return "generated-b64";
+      },
+      critiqueWithProvider: async function* () {},
+      logLine: () => {},
+      utils: {
+        pickTier: () => "4K",
+        capResolution: utils.capResolution
+      },
+      seedreamModelId: ["doubao-seedream-4-5-251128", "doubao-seedream-5-0-260128"],
+      seedream5ModelId: "doubao-seedream-5-0-260128",
+      grokModelId: "grok-imagine-image"
+    });
+
+    await generator.generate();
+
+    assert.equal(providerCall.modelId, "gemini-3-pro-image");
+    assert.equal(providerCall.options.resolution, "2K");
+  });
+
   test("starts all batch requests before awaiting results and places after all settle", async () => {
     const deferreds = Array.from({ length: 4 }, () => createDeferred());
     const providerCalls = [];

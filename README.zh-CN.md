@@ -8,7 +8,7 @@
 ## 这个插件能做什么
 - 在 Photoshop 内对选区进行生成与编辑
 - 支持多个 provider 和 model
-- `Nano Banana Pro` 与 `SeeDream 4.5` 支持 **4K** 输出
+- `Nano Banana Pro` 与 `SeeDream 4.5` 在 Preference 勾选 **Allow 4K Generation** 后支持 **4K** 输出，否则上限为 **2K**
 - `SeeDream 5.0` 支持 **2K** 与 **3K** 输出
 - `SeeDream 5.0 Pro` 支持 **1K** 与 **2K** 输出
 - 支持参考图功能

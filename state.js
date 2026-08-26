@@ -24,7 +24,8 @@ const DEFAULT_PLUGIN_PREFS = Object.freeze({
   maxBatchCount: DEFAULT_MAX_BATCH_COUNT,
   enableGeneratedGroupColorLabel: false,
   generatedGroupColorLabel: DEFAULT_GROUP_COLOR_LABEL,
-  enableDeferredBatchRecovery: false
+  enableDeferredBatchRecovery: false,
+  allow4KGeneration: false
 });
 
 const DEFAULT_PROMPT_PRESETS = {
@@ -162,6 +163,7 @@ function createState({ ui, apiKey, promptPresets, pluginPrefs, pendingBatchPlace
     enableGeneratedGroupColorLabel: prefs.enableGeneratedGroupColorLabel === true,
     generatedGroupColorLabel: groupColorLabel,
     enableDeferredBatchRecovery: prefs.enableDeferredBatchRecovery === true,
+    allow4KGeneration: prefs.allow4KGeneration === true,
     pendingBatchPlacements: Array.isArray(pendingBatchPlacements) ? [...pendingBatchPlacements] : [],
     textToImage: false,
     currentJobCount: 0,

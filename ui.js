@@ -1,3 +1,15 @@
+const utils = require("./utils");
+
+function getResolutionCapOptions(state, models) {
+  return {
+    allow4KGeneration: state.allow4KGeneration === true,
+    seedreamModelId: models?.SEEDREAM,
+    seedream5ModelId: models?.SEEDREAM_5,
+    seedream5ProModelId: models?.SEEDREAM_5_PRO,
+    grokModelId: models?.GROK_IMAGINE
+  };
+}
+
 function getUI() {
   return {
     modelPicker: document.getElementById("modelPicker"),
@@ -66,6 +78,7 @@ function getUI() {
     openImageFolderButton: document.getElementById("openImageFolder"),
     adaptiveRatioSetting: document.getElementById("adaptiveRatioSetting"),
     adaptiveResolutionSetting: document.getElementById("adaptiveResolutionSetting"),
+    allow4KGeneration: document.getElementById("allow4KGeneration"),
     upgradeFactorSlider: document.getElementById("upgradeFactorSlider"),
     apiKeyGoogleAiStudio: document.getElementById("api-key-google-ai-studio"),
     apiKeyGoogleVertexAi: document.getElementById("api-key-google-vertex-ai"),
@@ -168,6 +181,22 @@ function renderModelUI(ui, state, models, logLine) {
     }
   } else if (currentResolution === "3K") {
     syncResolutionSelection(ui, state, "2K");
+  }
+
+  if (state.allow4KGeneration !== true) {
+    if (ui.resolutionOption4K) {
+      ui.resolutionOption4K.style.display = "none";
+      ui.resolutionOption4K.selected = false;
+    }
+    const resolutionAfterModel = state.resolution || ui.resolutionPicker?.value || "2K";
+    const cappedResolution = utils.capResolution(
+      resolutionAfterModel,
+      state.selectedModel,
+      getResolutionCapOptions(state, models)
+    );
+    if (cappedResolution !== resolutionAfterModel) {
+      syncResolutionSelection(ui, state, cappedResolution);
+    }
   }
 
   if (ui.googleModel) {

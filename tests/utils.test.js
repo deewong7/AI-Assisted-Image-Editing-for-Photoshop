@@ -83,9 +83,21 @@ test.describe("pickTier", () => {
       upgradeFactor: 1.5,
       selectedModel: "seedream-4",
       seedreamModelId: ["seedream-4", "seedream-5"],
-      seedream5ModelId: "seedream-5"
+      seedream5ModelId: "seedream-5",
+      allow4KGeneration: true
     });
     assert.equal(tier, "4K");
+  });
+
+  test("caps seedream 4.5 at 2K when 4K is not allowed", () => {
+    const tier = utils.pickTier(4000, {
+      upgradeFactor: 1.5,
+      selectedModel: "seedream-4",
+      seedreamModelId: ["seedream-4", "seedream-5"],
+      seedream5ModelId: "seedream-5",
+      allow4KGeneration: false
+    });
+    assert.equal(tier, "2K");
   });
 
   test("picks 1K for seedream 5 pro under 1K threshold", () => {
@@ -108,6 +120,27 @@ test.describe("pickTier", () => {
       seedream5ProModelId: "seedream-5-pro"
     });
     assert.equal(tier, "2K");
+  });
+});
+
+test.describe("capResolution", () => {
+  test("caps Nano Banana Pro 4K to 2K when 4K is not allowed", () => {
+    assert.equal(utils.capResolution("4K", "gemini-3-pro-image", {
+      allow4KGeneration: false
+    }), "2K");
+  });
+
+  test("keeps Nano Banana Pro 4K when 4K is allowed", () => {
+    assert.equal(utils.capResolution("4K", "gemini-3-pro-image", {
+      allow4KGeneration: true
+    }), "4K");
+  });
+
+  test("keeps SeeDream 5.0 3K when 4K is not allowed", () => {
+    assert.equal(utils.capResolution("3K", "seedream-5", {
+      allow4KGeneration: false,
+      seedream5ModelId: "seedream-5"
+    }), "3K");
   });
 });
 
