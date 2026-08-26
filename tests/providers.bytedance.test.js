@@ -82,6 +82,61 @@ test.describe("generateImage (bytedance)", () => {
     assert.equal(lastCall.options.signal, controller.signal);
   });
 
+  test("clips SeeDream 5.0 Pro resolution to 2K and omits sequential generation", async (t) => {
+    const originalFetch = global.fetch;
+    let lastCall;
+    global.fetch = async (url, options) => {
+      lastCall = { url, options };
+      return {
+        ok: true,
+        json: async () => ({ data: [{ b64_json: "result" }] })
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    await generateImage({
+      prompt: "hello",
+      base64Image: "BASE",
+      apiKey: { "SeeDream-api-key": "k" },
+      resolution: "4K",
+      modelId: "doubao-seedream-5-0-pro-260628"
+    });
+
+    const body = JSON.parse(lastCall.options.body);
+    assert.equal(body.model, "doubao-seedream-5-0-pro-260628");
+    assert.equal(body.size, "2K");
+    assert.equal(Object.prototype.hasOwnProperty.call(body, "sequential_image_generation"), false);
+  });
+
+  test("keeps SeeDream 5.0 Pro 1K resolution", async (t) => {
+    const originalFetch = global.fetch;
+    let lastCall;
+    global.fetch = async (url, options) => {
+      lastCall = { url, options };
+      return {
+        ok: true,
+        json: async () => ({ data: [{ b64_json: "result" }] })
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    await generateImage({
+      prompt: "hello",
+      base64Image: "BASE",
+      apiKey: { "SeeDream-api-key": "k" },
+      resolution: "1K",
+      modelId: "doubao-seedream-5-0-pro-260628"
+    });
+
+    const body = JSON.parse(lastCall.options.body);
+    assert.equal(body.model, "doubao-seedream-5-0-pro-260628");
+    assert.equal(body.size, "1K");
+  });
+
   test("clips SeeDream 5.0 resolution to 3K", async (t) => {
     const originalFetch = global.fetch;
     let lastCall;
@@ -107,6 +162,7 @@ test.describe("generateImage (bytedance)", () => {
     const body = JSON.parse(lastCall.options.body);
     assert.equal(body.model, "doubao-seedream-5-0-260128");
     assert.equal(body.size, "3K");
+    assert.equal(body.sequential_image_generation, "disabled");
   });
 
   test("throws on non-ok response", async (t) => {

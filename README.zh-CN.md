@@ -10,6 +10,7 @@
 - 支持多个 provider 和 model
 - `Nano Banana Pro` 与 `SeeDream 4.5` 支持 **4K** 输出
 - `SeeDream 5.0` 支持 **2K** 与 **3K** 输出
+- `SeeDream 5.0 Pro` 支持 **1K** 与 **2K** 输出
 - 支持参考图功能
 - 支持自适应分辨率，在 quality 与 speed 间做平衡
 - 将结果以新图层形式放入当前文档
@@ -24,7 +25,7 @@
 
 ## 支持的模型
 - Google: Nano Banana Pro 3
-- ByteDance: SeeDream 4.5, SeeDream 5.0
+- ByteDance: SeeDream 4.5, SeeDream 5.0, SeeDream 5.0 Pro
 - xAI: Grok Imagine
 
 ## 快速开始

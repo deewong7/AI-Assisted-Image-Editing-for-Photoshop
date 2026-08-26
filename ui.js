@@ -109,6 +109,7 @@ function renderModelUI(ui, state, models, logLine) {
 
   const isSeedreamModel = state.selectedModel === models.SEEDREAM;
   const isSeedream5Model = state.selectedModel === models.SEEDREAM_5;
+  const isSeedream5ProModel = state.selectedModel === models.SEEDREAM_5_PRO;
   const currentResolution = state.resolution || ui.resolutionPicker?.value || "2K";
 
   if (ui.resolutionOption1K) {
@@ -147,6 +148,14 @@ function renderModelUI(ui, state, models, logLine) {
     }
     if (currentResolution !== "2K" && currentResolution !== "3K") {
       syncResolutionSelection(ui, state, "2K");
+    }
+  } else if (isSeedream5ProModel) {
+    if (ui.resolutionOption4K) {
+      ui.resolutionOption4K.style.display = "none";
+      ui.resolutionOption4K.selected = false;
+    }
+    if (currentResolution === "3K" || currentResolution === "4K") {
+      syncResolutionSelection(ui, state, ui.resolutionOption2K ? "2K" : "1K");
     }
   } else if (state.selectedModel === models.GROK_IMAGINE) {
     if (ui.resolutionOption4K) {
