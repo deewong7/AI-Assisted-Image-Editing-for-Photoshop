@@ -119,6 +119,33 @@ test.describe("getCurrentTime", () => {
   });
 });
 
+test.describe("migrateGoogleApiKeys", () => {
+  test("copies a legacy AIza key into the Studio slot", () => {
+    const migrated = utils.migrateGoogleApiKeys({
+      "NanoBananaPro-api-key": "AIza_LEGACY"
+    });
+    assert.equal(migrated["GoogleAIStudio-api-key"], "AIza_LEGACY");
+    assert.equal(migrated["GoogleVertexAI-api-key"], undefined);
+  });
+
+  test("copies a legacy non-AIza key into the Vertex slot", () => {
+    const migrated = utils.migrateGoogleApiKeys({
+      "NanoBananaPro-api-key": "AQ_LEGACY"
+    });
+    assert.equal(migrated["GoogleVertexAI-api-key"], "AQ_LEGACY");
+    assert.equal(migrated["GoogleAIStudio-api-key"], undefined);
+  });
+
+  test("does not overwrite already split Google keys", () => {
+    const migrated = utils.migrateGoogleApiKeys({
+      "NanoBananaPro-api-key": "AQ_LEGACY",
+      "GoogleAIStudio-api-key": "STUDIO_KEY"
+    });
+    assert.equal(migrated["GoogleAIStudio-api-key"], "STUDIO_KEY");
+    assert.equal(migrated["GoogleVertexAI-api-key"], undefined);
+  });
+});
+
 test.describe("loadKeysFromStorage", () => {
   test("returns defaults when missing", () => {
     const storage = createStorage();
@@ -135,6 +162,19 @@ test.describe("loadKeysFromStorage", () => {
       keyA: "",
       keyB: "value"
     });
+  });
+
+  test("migrates a stored legacy Google key on load", () => {
+    const storage = createStorage({
+      apiKeys: JSON.stringify({ "NanoBananaPro-api-key": "AIza_LEGACY" })
+    });
+    const loaded = utils.loadKeysFromStorage(storage, {
+      "NanoBananaPro-api-key": "",
+      "GoogleAIStudio-api-key": "",
+      "GoogleVertexAI-api-key": ""
+    });
+    assert.equal(loaded["GoogleAIStudio-api-key"], "AIza_LEGACY");
+    assert.equal(loaded["NanoBananaPro-api-key"], "AIza_LEGACY");
   });
 });
 
@@ -165,7 +205,7 @@ test.describe("loadPluginPrefsFromStorage", () => {
       persistGeneratedImages: false,
       enableBatchGeneration: false,
       showChatTab: true,
-      googleApiBackend: "auto",
+      googleApiBackend: "google-ai-studio",
       maxWaitingTimeSeconds: 120,
       maxBatchCount: 8,
       enableGeneratedGroupColorLabel: false,
@@ -182,7 +222,7 @@ test.describe("loadPluginPrefsFromStorage", () => {
       persistGeneratedImages: false,
       enableBatchGeneration: false,
       showChatTab: true,
-      googleApiBackend: "auto",
+      googleApiBackend: "google-ai-studio",
       maxWaitingTimeSeconds: 120,
       maxBatchCount: 8,
       enableGeneratedGroupColorLabel: false,
@@ -192,7 +232,7 @@ test.describe("loadPluginPrefsFromStorage", () => {
       persistGeneratedImages: true,
       enableBatchGeneration: false,
       showChatTab: true,
-      googleApiBackend: "auto",
+      googleApiBackend: "google-ai-studio",
       maxWaitingTimeSeconds: 120,
       maxBatchCount: 8,
       enableGeneratedGroupColorLabel: false,
@@ -208,7 +248,7 @@ test.describe("loadPluginPrefsFromStorage", () => {
       persistGeneratedImages: false,
       enableBatchGeneration: false,
       showChatTab: true,
-      googleApiBackend: "auto",
+      googleApiBackend: "google-ai-studio",
       maxWaitingTimeSeconds: 120,
       maxBatchCount: 8,
       enableGeneratedGroupColorLabel: false,

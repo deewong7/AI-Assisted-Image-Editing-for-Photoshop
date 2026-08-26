@@ -10,14 +10,15 @@ const { DEFAULT_MAX_BATCH_COUNT, clampMaxBatchCount, clampBatchCount } = require
 const { normalizeGroupColorLabel } = require("./group-color-labels");
 
 const KEY_MAP = [
-  { fieldKey: "apiKeyGoogle", keyName: "NanoBananaPro-api-key" },
+  { fieldKey: "apiKeyGoogleAiStudio", keyName: "GoogleAIStudio-api-key" },
+  { fieldKey: "apiKeyGoogleVertexAi", keyName: "GoogleVertexAI-api-key" },
   { fieldKey: "apiKeyBytedance", keyName: "SeeDream-api-key" },
   { fieldKey: "apiKeyXai", keyName: "xAI-api-key" }
 ];
-const GOOGLE_API_BACKENDS = new Set(["auto", "google-ai-studio", "vertex-ai"]);
+const GOOGLE_API_BACKENDS = new Set(["google-ai-studio", "vertex-ai"]);
 
 function normalizeGoogleApiBackend(value) {
-  return GOOGLE_API_BACKENDS.has(value) ? value : "auto";
+  return GOOGLE_API_BACKENDS.has(value) ? value : "google-ai-studio";
 }
 
 function updateApiKey(ui, state, storage, update = true) {

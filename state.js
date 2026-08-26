@@ -9,6 +9,8 @@ const { DEFAULT_GROUP_COLOR_LABEL, normalizeGroupColorLabel } = require("./group
 
 const DEFAULT_API_KEYS = Object.freeze({
   "NanoBananaPro-api-key": "",
+  "GoogleAIStudio-api-key": "",
+  "GoogleVertexAI-api-key": "",
   "SeeDream-api-key": "",
   "xAI-api-key": ""
 });
@@ -17,7 +19,7 @@ const DEFAULT_PLUGIN_PREFS = Object.freeze({
   persistGeneratedImages: false,
   enableBatchGeneration: false,
   showChatTab: true,
-  googleApiBackend: "auto",
+  googleApiBackend: "google-ai-studio",
   maxWaitingTimeSeconds: 120,
   maxBatchCount: DEFAULT_MAX_BATCH_COUNT,
   enableGeneratedGroupColorLabel: false,
@@ -152,9 +154,9 @@ function createState({ ui, apiKey, promptPresets, pluginPrefs, pendingBatchPlace
     skipMask: false,
     persistGeneratedImages: prefs.persistGeneratedImages === true,
     showChatTab: prefs.showChatTab !== false,
-    googleApiBackend: ["auto", "google-ai-studio", "vertex-ai"].includes(prefs.googleApiBackend)
+    googleApiBackend: ["google-ai-studio", "vertex-ai"].includes(prefs.googleApiBackend)
       ? prefs.googleApiBackend
-      : "auto",
+      : "google-ai-studio",
     maxWaitingTimeSeconds,
     maxBatchCount,
     enableGeneratedGroupColorLabel: prefs.enableGeneratedGroupColorLabel === true,

@@ -1,21 +1,43 @@
 const supportedModels = ["gemini-3-pro-image", "gemini-3.1-flash-image-preview"];
 const VERTEX_API_ENDPOINT = "https://aiplatform.googleapis.com";
 const AI_STUDIO_API_ENDPOINT = "https://generativelanguage.googleapis.com";
+const GOOGLE_AI_STUDIO_KEY = "GoogleAIStudio-api-key";
+const GOOGLE_VERTEX_AI_KEY = "GoogleVertexAI-api-key";
+const LEGACY_GOOGLE_API_KEY = "NanoBananaPro-api-key";
 
-function shouldUseVertexApi(apiKeyValue, googleApiBackend = "auto") {
-  if (googleApiBackend === "vertex-ai") {
-    return true;
-  }
-  if (googleApiBackend === "google-ai-studio") {
-    return false;
-  }
-  return typeof apiKeyValue === "string" && apiKeyValue.startsWith("AQ");
+function nonemptyApiKey(value) {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : "";
 }
 
-function getApiConfig(apiKey, modelId, apiName, googleApiBackend = "auto") {
-  const API_KEY = apiKey["NanoBananaPro-api-key"];
+function resolveGoogleApi(apiKey = {}, googleApiBackend = "google-ai-studio") {
+  const studioKey = nonemptyApiKey(apiKey[GOOGLE_AI_STUDIO_KEY]);
+  const vertexKey = nonemptyApiKey(apiKey[GOOGLE_VERTEX_AI_KEY]);
+  const preferVertex = googleApiBackend === "vertex-ai";
+
+  if (studioKey && !vertexKey) {
+    return { useVertexApi: false, API_KEY: studioKey };
+  }
+  if (vertexKey && !studioKey) {
+    return { useVertexApi: true, API_KEY: vertexKey };
+  }
+  if (studioKey && vertexKey) {
+    return {
+      useVertexApi: preferVertex,
+      API_KEY: preferVertex ? vertexKey : studioKey
+    };
+  }
+
+  const legacyKey = nonemptyApiKey(apiKey[LEGACY_GOOGLE_API_KEY]);
+  if (legacyKey) {
+    return { useVertexApi: preferVertex, API_KEY: legacyKey };
+  }
+
+  return { useVertexApi: preferVertex, API_KEY: "" };
+}
+
+function getApiConfig(apiKey, modelId, apiName, googleApiBackend = "google-ai-studio") {
+  const { API_KEY, useVertexApi } = resolveGoogleApi(apiKey || {}, googleApiBackend);
   const MODEL_ID = modelId || supportedModels[0];
-  const useVertexApi = shouldUseVertexApi(API_KEY, googleApiBackend);
 
   const url = useVertexApi
     ? `${VERTEX_API_ENDPOINT}/v1/publishers/google/models/${MODEL_ID}:${apiName}?key=${API_KEY}`
@@ -260,10 +282,9 @@ async function generateImage(options) {
     return;
   }
 
-  const API_KEY = apiKey["NanoBananaPro-api-key"];
   const MODEL_ID = modelId || supportedModels[0];
   const GENERATE_CONTENT_API = "generateContent";
-  const { useVertexApi, url } = getApiConfig(apiKey, MODEL_ID, GENERATE_CONTENT_API, googleApiBackend);
+  const { API_KEY, useVertexApi, url } = getApiConfig(apiKey, MODEL_ID, GENERATE_CONTENT_API, googleApiBackend);
   const safeTemperature = Number.isFinite(temperature) ? temperature : 1.0;
   const safeTopP = Number.isFinite(topP) ? topP : 0.90;
 

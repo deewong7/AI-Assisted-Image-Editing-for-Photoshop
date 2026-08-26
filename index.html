@@ -267,9 +267,8 @@
         <sp-picker id="googleApiBackend" placeholder="Choose Google API backend..." style="width: 200px;">
           <sp-label slot="label">Google API Backend</sp-label>
           <sp-menu slot="options">
-            <sp-menu-item value="auto" selected>Auto</sp-menu-item>
-            <sp-menu-item value="google-ai-studio">Google AI Studio</sp-menu-item>
-            <sp-menu-item value="vertex-ai">Vertex AI</sp-menu-item>
+            <sp-menu-item value="google-ai-studio" selected>Google AI Studio</sp-menu-item>
+            <sp-menu-item value="vertex-ai">Google Vertex AI</sp-menu-item>
           </sp-menu>
         </sp-picker>
         <br>
@@ -309,8 +308,12 @@
 
       <!-- perhaps change to type="password" -->
       <sp-heading size="xxs">API Key</sp-heading>
-      <sp-textfield id="api-key-google" placeholder="****************" style="width: 220px;">
-        <sp-label slot="label">Google</sp-label>
+      <sp-textfield id="api-key-google-ai-studio" placeholder="****************" style="width: 220px;">
+        <sp-label slot="label">Google AI Studio</sp-label>
+      </sp-textfield>
+      <br>
+      <sp-textfield id="api-key-google-vertex-ai" placeholder="****************" style="width: 220px;">
+        <sp-label slot="label">Google Vertex AI</sp-label>
       </sp-textfield>
       <br>
       <sp-textfield id="api-key-bytedance" placeholder="****************" style="width: 220px;">
@@ -354,7 +357,7 @@
       <sp-heading size="xs">Copyright</sp-heading>
       <sp-label>
         Blendrr<br>
-        Version 0.3.1-alpha<br>
+        Version 0.3.2-alpha<br>
 
         © 2026 dw<br>
         License: GPL-3.0<br>

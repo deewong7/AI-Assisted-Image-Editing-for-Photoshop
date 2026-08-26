@@ -36,10 +36,13 @@ Bring state-of-the-art image generation and edits directly into Photoshop. This 
 5) Volla!
 
 ## API keys
-Choose one or both:
-- Google API key: [Google Vertex AI](https://cloud.google.com/vertex-ai?hl=en)
+Choose one or more:
+- Google AI Studio API key: [Google AI Studio](https://aistudio.google.com)
+- Google Vertex AI API key: [Google Vertex AI](https://cloud.google.com/vertex-ai?hl=en)
 - ByteDance API key: [Volcengine](https://console.volcengine.com/ark/region:ark+cn-beijing/openManagement?LLM=%7B%7D&advancedActiveKey=model&tab=ComputerVision)
 - xAI API Key: [xAI](https://console.x.ai/)
+
+If only one Google key is saved, Blendrr uses that backend. If both Google keys are saved, the **Google API Backend** picker chooses Google AI Studio or Vertex AI.
 
 ## Screenshots
 ### Main Page
