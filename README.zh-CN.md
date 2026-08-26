@@ -37,10 +37,12 @@
 
 ## API keys
 你可以只配置一个，也可以同时配置多个：
-- Google API key: [Google Vertex AI](https://cloud.google.com/vertex-ai?hl=en)
-- Google AI Studio [Google AI Studio](https://aistudio.google.com)
+- Google AI Studio API key: [Google AI Studio](https://aistudio.google.com)
+- Google Vertex AI API key: [Google Vertex AI](https://cloud.google.com/vertex-ai?hl=en)
 - ByteDance API key: [Volcengine](https://console.volcengine.com/ark/region:ark+cn-beijing/openManagement?LLM=%7B%7D&advancedActiveKey=model&tab=ComputerVision)
 - xAI API Key: [xAI](https://console.x.ai/)
+
+如果只保存了一把 Google key，Blendrr 会使用对应的后端。两把 Google key 都保存时，由 **Google API Backend** 选择 Google AI Studio 或 Vertex AI。
 
 ## 截图
 ### 主页面

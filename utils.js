@@ -87,17 +87,44 @@ function getCurrentTime(date = new Date()) {
   return `[${hours}:${minutes}:${seconds}]`;
 }
 
+function nonemptyApiKey(value) {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : "";
+}
+
+function migrateGoogleApiKeys(apiKey) {
+  if (!apiKey || typeof apiKey !== "object") {
+    return apiKey;
+  }
+
+  const hasStudioKey = nonemptyApiKey(apiKey["GoogleAIStudio-api-key"]);
+  const hasVertexKey = nonemptyApiKey(apiKey["GoogleVertexAI-api-key"]);
+  if (hasStudioKey || hasVertexKey) {
+    return apiKey;
+  }
+
+  const legacyKey = nonemptyApiKey(apiKey["NanoBananaPro-api-key"]);
+  if (!legacyKey) {
+    return apiKey;
+  }
+
+  if (legacyKey.startsWith("AIza")) {
+    return { ...apiKey, "GoogleAIStudio-api-key": legacyKey };
+  }
+
+  return { ...apiKey, "GoogleVertexAI-api-key": legacyKey };
+}
+
 function loadKeysFromStorage(storage, defaultKeys) {
   const raw = storage.getItem("apiKeys");
   if (!raw) {
-    return { ...defaultKeys };
+    return migrateGoogleApiKeys({ ...defaultKeys });
   }
 
   try {
     const parsed = JSON.parse(raw);
-    return { ...defaultKeys, ...parsed };
+    return migrateGoogleApiKeys({ ...defaultKeys, ...parsed });
   } catch {
-    return { ...defaultKeys };
+    return migrateGoogleApiKeys({ ...defaultKeys });
   }
 }
 
@@ -147,6 +174,7 @@ module.exports = {
   base64ToArrayBuffer,
   pickTier,
   getCurrentTime,
+  migrateGoogleApiKeys,
   loadKeysFromStorage,
   saveKeysToStorage,
   loadPromptPresetsFromStorage,

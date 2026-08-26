@@ -117,7 +117,7 @@ function createSavedPrefs(overrides = {}) {
     persistGeneratedImages: false,
     enableBatchGeneration: false,
     showChatTab: true,
-    googleApiBackend: "auto",
+    googleApiBackend: "google-ai-studio",
     maxWaitingTimeSeconds: 120,
     maxBatchCount: 8,
     enableGeneratedGroupColorLabel: false,
@@ -340,7 +340,7 @@ test.describe("google api backend preference", () => {
     })]);
   });
 
-  test("invalid googleApiBackend falls back to auto", () => {
+  test("invalid googleApiBackend falls back to google-ai-studio", () => {
     const savedPrefs = [];
     const ui = {
       chatPromptInput: { value: "", disabled: false },
@@ -358,8 +358,8 @@ test.describe("google api backend preference", () => {
 
     ui.googleApiBackend.change("unknown");
 
-    assert.equal(args.state.googleApiBackend, "auto");
-    assert.equal(ui.googleApiBackend.value, "auto");
+    assert.equal(args.state.googleApiBackend, "google-ai-studio");
+    assert.equal(ui.googleApiBackend.value, "google-ai-studio");
     assert.deepEqual(savedPrefs, [createSavedPrefs()]);
   });
 });

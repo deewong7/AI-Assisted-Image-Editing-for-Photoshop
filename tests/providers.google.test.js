@@ -3,27 +3,32 @@ const assert = require("node:assert/strict");
 const { generateImage, critiqueImageStream, getGenerationBackendName } = require("../providers/google.js");
 
 test.describe("getGenerationBackendName (google)", () => {
-  test("returns Vertex AI when API key starts with AQ", () => {
+  test("returns Vertex AI when only the Vertex key is set", () => {
     const backendName = getGenerationBackendName({
-      apiKey: { "NanoBananaPro-api-key": "AQ_KEY" },
+      apiKey: { "GoogleVertexAI-api-key": "VERTEX_KEY" },
+      googleApiBackend: "google-ai-studio",
       modelId: "gemini-3.1-flash-image-preview"
     });
 
     assert.equal(backendName, "Vertex AI");
   });
 
-  test("returns Google AI Studio when API key does not start with AQ", () => {
+  test("returns Google AI Studio when only the Studio key is set", () => {
     const backendName = getGenerationBackendName({
-      apiKey: { "NanoBananaPro-api-key": "AIza_TEST_KEY" },
+      apiKey: { "GoogleAIStudio-api-key": "STUDIO_KEY" },
+      googleApiBackend: "vertex-ai",
       modelId: "gemini-3.1-flash-image-preview"
     });
 
     assert.equal(backendName, "Google AI Studio");
   });
 
-  test("returns explicit Google AI Studio even when API key starts with AQ", () => {
+  test("honors Google AI Studio picker when both keys are set", () => {
     const backendName = getGenerationBackendName({
-      apiKey: { "NanoBananaPro-api-key": "AQ_KEY" },
+      apiKey: {
+        "GoogleAIStudio-api-key": "STUDIO_KEY",
+        "GoogleVertexAI-api-key": "VERTEX_KEY"
+      },
       googleApiBackend: "google-ai-studio",
       modelId: "gemini-3.1-flash-image-preview"
     });
@@ -31,9 +36,12 @@ test.describe("getGenerationBackendName (google)", () => {
     assert.equal(backendName, "Google AI Studio");
   });
 
-  test("returns explicit Vertex AI even when API key does not start with AQ", () => {
+  test("honors Vertex AI picker when both keys are set", () => {
     const backendName = getGenerationBackendName({
-      apiKey: { "NanoBananaPro-api-key": "AIza_TEST_KEY" },
+      apiKey: {
+        "GoogleAIStudio-api-key": "STUDIO_KEY",
+        "GoogleVertexAI-api-key": "VERTEX_KEY"
+      },
       googleApiBackend: "vertex-ai",
       modelId: "gemini-3.1-flash-image-preview"
     });
@@ -68,7 +76,7 @@ test.describe("generateImage (google)", () => {
     const result = await generateImage({
       prompt: "hello",
       base64Image: "BASE",
-      apiKey: { "NanoBananaPro-api-key": "AQ_KEY" },
+      apiKey: { "GoogleVertexAI-api-key": "AQ_KEY" },
       resolution: "2K",
       aspectRatio: "3:4",
       referenceImages: ["REF"],
@@ -111,7 +119,7 @@ test.describe("generateImage (google)", () => {
     const result = await generateImage({
       prompt: "hello",
       base64Image: "BASE",
-      apiKey: { "NanoBananaPro-api-key": "AIza_TEST_KEY" },
+      apiKey: { "GoogleAIStudio-api-key": "AIza_TEST_KEY" },
       resolution: "2K",
       modelId: "gemini-3.1-flash-image-preview"
     });
@@ -159,7 +167,7 @@ test.describe("generateImage (google)", () => {
     assert.equal(called, false);
   });
 
-  test("uses vertex endpoint when API key starts with AQ", async (t) => {
+  test("uses vertex endpoint when only the Vertex key is set", async (t) => {
     const originalFetch = global.fetch;
     let lastCall;
     global.fetch = async (url, options) => {
@@ -184,7 +192,7 @@ test.describe("generateImage (google)", () => {
     const result = await generateImage({
       prompt: "hello",
       base64Image: "BASE",
-      apiKey: { "NanoBananaPro-api-key": "AQ_KEY" },
+      apiKey: { "GoogleVertexAI-api-key": "AQ_KEY" },
       resolution: "2K",
       aspectRatio: "3:4",
       referenceImages: ["REF"],
@@ -209,7 +217,7 @@ test.describe("generateImage (google)", () => {
     assert.equal(lastCall.options.headers["x-goog-api-key"], undefined);
   });
 
-  test("uses AI Studio endpoint when API key does not start with AQ", async (t) => {
+  test("uses AI Studio endpoint when only the Studio key is set", async (t) => {
     const originalFetch = global.fetch;
     let lastCall;
     global.fetch = async (url, options) => {
@@ -234,7 +242,7 @@ test.describe("generateImage (google)", () => {
     const result = await generateImage({
       prompt: "hello",
       base64Image: "BASE",
-      apiKey: { "NanoBananaPro-api-key": "AIza_TEST_KEY" },
+      apiKey: { "GoogleAIStudio-api-key": "AIza_TEST_KEY" },
       resolution: "2K",
       modelId: "custom-model"
     });
@@ -253,7 +261,7 @@ test.describe("generateImage (google)", () => {
     assert.equal(body.generationConfig.imageConfig.personGeneration, undefined);
   });
 
-  test("uses explicit AI Studio endpoint when API key starts with AQ", async (t) => {
+  test("uses Studio endpoint when both keys are set and picker is Studio", async (t) => {
     const originalFetch = global.fetch;
     let lastCall;
     global.fetch = async (url, options) => {
@@ -278,7 +286,10 @@ test.describe("generateImage (google)", () => {
     const result = await generateImage({
       prompt: "hello",
       base64Image: "BASE",
-      apiKey: { "NanoBananaPro-api-key": "AQ_KEY" },
+      apiKey: {
+        "GoogleAIStudio-api-key": "STUDIO_KEY",
+        "GoogleVertexAI-api-key": "VERTEX_KEY"
+      },
       googleApiBackend: "google-ai-studio",
       resolution: "2K",
       modelId: "custom-model"
@@ -289,10 +300,10 @@ test.describe("generateImage (google)", () => {
       lastCall.url,
       "https://generativelanguage.googleapis.com/v1beta/models/custom-model:generateContent"
     );
-    assert.equal(lastCall.options.headers["x-goog-api-key"], "AQ_KEY");
+    assert.equal(lastCall.options.headers["x-goog-api-key"], "STUDIO_KEY");
   });
 
-  test("uses explicit Vertex endpoint when API key does not start with AQ", async (t) => {
+  test("uses Vertex endpoint when both keys are set and picker is Vertex", async (t) => {
     const originalFetch = global.fetch;
     let lastCall;
     global.fetch = async (url, options) => {
@@ -317,7 +328,10 @@ test.describe("generateImage (google)", () => {
     const result = await generateImage({
       prompt: "hello",
       base64Image: "BASE",
-      apiKey: { "NanoBananaPro-api-key": "AIza_TEST_KEY" },
+      apiKey: {
+        "GoogleAIStudio-api-key": "STUDIO_KEY",
+        "GoogleVertexAI-api-key": "VERTEX_KEY"
+      },
       googleApiBackend: "vertex-ai",
       resolution: "2K",
       modelId: "custom-model"
@@ -326,9 +340,121 @@ test.describe("generateImage (google)", () => {
     assert.equal(result, "RESULT_VERTEX_AI");
     assert.equal(
       lastCall.url,
-      "https://aiplatform.googleapis.com/v1/publishers/google/models/custom-model:generateContent?key=AIza_TEST_KEY"
+      "https://aiplatform.googleapis.com/v1/publishers/google/models/custom-model:generateContent?key=VERTEX_KEY"
     );
     assert.equal(lastCall.options.headers["x-goog-api-key"], undefined);
+  });
+
+  test("falls back to Vertex when only the Vertex key is set", async (t) => {
+    const originalFetch = global.fetch;
+    let lastCall;
+    global.fetch = async (url, options) => {
+      lastCall = { url, options };
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [{ inlineData: { data: "RESULT_VERTEX_FALLBACK" } }]
+              }
+            }
+          ]
+        })
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    const result = await generateImage({
+      prompt: "hello",
+      base64Image: "BASE",
+      apiKey: { "GoogleVertexAI-api-key": "VERTEX_KEY" },
+      googleApiBackend: "google-ai-studio",
+      modelId: "custom-model"
+    });
+
+    assert.equal(result, "RESULT_VERTEX_FALLBACK");
+    assert.equal(
+      lastCall.url,
+      "https://aiplatform.googleapis.com/v1/publishers/google/models/custom-model:generateContent?key=VERTEX_KEY"
+    );
+  });
+
+  test("falls back to Studio when only the Studio key is set", async (t) => {
+    const originalFetch = global.fetch;
+    let lastCall;
+    global.fetch = async (url, options) => {
+      lastCall = { url, options };
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [{ inlineData: { data: "RESULT_STUDIO_FALLBACK" } }]
+              }
+            }
+          ]
+        })
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    const result = await generateImage({
+      prompt: "hello",
+      base64Image: "BASE",
+      apiKey: { "GoogleAIStudio-api-key": "STUDIO_KEY" },
+      googleApiBackend: "vertex-ai",
+      modelId: "custom-model"
+    });
+
+    assert.equal(result, "RESULT_STUDIO_FALLBACK");
+    assert.equal(
+      lastCall.url,
+      "https://generativelanguage.googleapis.com/v1beta/models/custom-model:generateContent"
+    );
+    assert.equal(lastCall.options.headers["x-goog-api-key"], "STUDIO_KEY");
+  });
+
+  test("uses the legacy Google key with the backend picker", async (t) => {
+    const originalFetch = global.fetch;
+    let lastCall;
+    global.fetch = async (url, options) => {
+      lastCall = { url, options };
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [{ inlineData: { data: "RESULT_LEGACY" } }]
+              }
+            }
+          ]
+        })
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    const result = await generateImage({
+      prompt: "hello",
+      base64Image: "BASE",
+      apiKey: { "NanoBananaPro-api-key": "LEGACY_KEY" },
+      googleApiBackend: "vertex-ai",
+      modelId: "custom-model"
+    });
+
+    assert.equal(result, "RESULT_LEGACY");
+    assert.equal(
+      lastCall.url,
+      "https://aiplatform.googleapis.com/v1/publishers/google/models/custom-model:generateContent?key=LEGACY_KEY"
+    );
   });
 
   test("passes AbortSignal to fetch", async (t) => {
@@ -357,7 +483,7 @@ test.describe("generateImage (google)", () => {
     await generateImage({
       prompt: "hello",
       base64Image: "BASE",
-      apiKey: { "NanoBananaPro-api-key": "KEY" },
+      apiKey: { "GoogleAIStudio-api-key": "KEY" },
       signal: controller.signal
     });
 
@@ -380,7 +506,7 @@ test.describe("generateImage (google)", () => {
       () => generateImage({
         prompt: "hello",
         base64Image: "BASE",
-        apiKey: { "NanoBananaPro-api-key": "KEY" }
+        apiKey: { "GoogleAIStudio-api-key": "KEY" }
       }),
       /API call failed with status 400 Bad Request/
     );
@@ -406,7 +532,7 @@ test.describe("generateImage (google)", () => {
       () => generateImage({
         prompt: "hello",
         base64Image: "BASE",
-        apiKey: { "NanoBananaPro-api-key": "KEY" }
+        apiKey: { "GoogleAIStudio-api-key": "KEY" }
       }),
       /API call failed with status 429 Too Many Requests: Rate limit reached/
     );
@@ -428,7 +554,7 @@ test.describe("generateImage (google)", () => {
       () => generateImage({
         prompt: "hello",
         base64Image: "BASE",
-        apiKey: { "NanoBananaPro-api-key": "KEY" }
+        apiKey: { "GoogleAIStudio-api-key": "KEY" }
       }),
       /Prompt was blocked: blocked/
     );
@@ -450,7 +576,7 @@ test.describe("generateImage (google)", () => {
       () => generateImage({
         prompt: "hello",
         base64Image: "BASE",
-        apiKey: { "NanoBananaPro-api-key": "KEY" }
+        apiKey: { "GoogleAIStudio-api-key": "KEY" }
       }),
       /Prompt was blocked: PROHIBITED_CONTENT/
     );
@@ -458,7 +584,7 @@ test.describe("generateImage (google)", () => {
 });
 
 test.describe("critiqueImageStream (google)", () => {
-  test("uses vertex stream endpoint when API key starts with AQ", async (t) => {
+  test("uses vertex stream endpoint when only the Vertex key is set", async (t) => {
     const originalFetch = global.fetch;
     let requestedUrl;
     global.fetch = async (url) => {
@@ -492,7 +618,7 @@ test.describe("critiqueImageStream (google)", () => {
     for await (const chunk of critiqueImageStream({
       prompt: "critique this",
       base64Image: "BASE",
-      apiKey: { "NanoBananaPro-api-key": "AQ_KEY" },
+      apiKey: { "GoogleVertexAI-api-key": "AQ_KEY" },
       modelId: "custom-model"
     })) {
       chunks.push(chunk);
@@ -502,7 +628,7 @@ test.describe("critiqueImageStream (google)", () => {
     assert.deepEqual(chunks, ["hello"]);
   });
 
-  test("uses AI studio stream endpoint when API key does not start with AQ", async (t) => {
+  test("uses AI studio stream endpoint when only the Studio key is set", async (t) => {
     const originalFetch = global.fetch;
     let requestedUrl;
     let requestedHeaders;
@@ -538,7 +664,7 @@ test.describe("critiqueImageStream (google)", () => {
     for await (const chunk of critiqueImageStream({
       prompt: "critique this",
       base64Image: "BASE",
-      apiKey: { "NanoBananaPro-api-key": "AIza_TEST_KEY" },
+      apiKey: { "GoogleAIStudio-api-key": "AIza_TEST_KEY" },
       modelId: "custom-model"
     })) {
       chunks.push(chunk);
@@ -549,7 +675,7 @@ test.describe("critiqueImageStream (google)", () => {
     assert.deepEqual(chunks, ["a"]);
   });
 
-  test("uses explicit AI studio stream endpoint when API key starts with AQ", async (t) => {
+  test("uses Studio stream endpoint when both keys are set and picker is Studio", async (t) => {
     const originalFetch = global.fetch;
     let requestedUrl;
     let requestedHeaders;
@@ -571,7 +697,10 @@ test.describe("critiqueImageStream (google)", () => {
     for await (const chunk of critiqueImageStream({
       prompt: "critique this",
       base64Image: "BASE",
-      apiKey: { "NanoBananaPro-api-key": "AQ_KEY" },
+      apiKey: {
+        "GoogleAIStudio-api-key": "STUDIO_KEY",
+        "GoogleVertexAI-api-key": "VERTEX_KEY"
+      },
       googleApiBackend: "google-ai-studio",
       modelId: "custom-model"
     })) {
@@ -579,11 +708,11 @@ test.describe("critiqueImageStream (google)", () => {
     }
 
     assert.equal(requestedUrl, "https://generativelanguage.googleapis.com/v1beta/models/custom-model:streamGenerateContent?alt=sse");
-    assert.equal(requestedHeaders["x-goog-api-key"], "AQ_KEY");
+    assert.equal(requestedHeaders["x-goog-api-key"], "STUDIO_KEY");
     assert.deepEqual(chunks, ["studio"]);
   });
 
-  test("uses explicit Vertex stream endpoint when API key does not start with AQ", async (t) => {
+  test("uses Vertex stream endpoint when both keys are set and picker is Vertex", async (t) => {
     const originalFetch = global.fetch;
     let requestedUrl;
     let requestedHeaders;
@@ -605,14 +734,17 @@ test.describe("critiqueImageStream (google)", () => {
     for await (const chunk of critiqueImageStream({
       prompt: "critique this",
       base64Image: "BASE",
-      apiKey: { "NanoBananaPro-api-key": "AIza_TEST_KEY" },
+      apiKey: {
+        "GoogleAIStudio-api-key": "STUDIO_KEY",
+        "GoogleVertexAI-api-key": "VERTEX_KEY"
+      },
       googleApiBackend: "vertex-ai",
       modelId: "custom-model"
     })) {
       chunks.push(chunk);
     }
 
-    assert.equal(requestedUrl, "https://aiplatform.googleapis.com/v1/publishers/google/models/custom-model:streamGenerateContent?key=AIza_TEST_KEY&alt=sse");
+    assert.equal(requestedUrl, "https://aiplatform.googleapis.com/v1/publishers/google/models/custom-model:streamGenerateContent?key=VERTEX_KEY&alt=sse");
     assert.equal(requestedHeaders["x-goog-api-key"], undefined);
     assert.deepEqual(chunks, ["vertex"]);
   });
@@ -654,7 +786,7 @@ test.describe("critiqueImageStream (google)", () => {
     for await (const chunk of critiqueImageStream({
       prompt: "critique this",
       base64Image: "BASE",
-      apiKey: { "NanoBananaPro-api-key": "AQ_KEY" }
+      apiKey: { "GoogleVertexAI-api-key": "AQ_KEY" }
     })) {
       parts.push(chunk);
     }
@@ -679,7 +811,7 @@ test.describe("critiqueImageStream (google)", () => {
         for await (const _chunk of critiqueImageStream({
           prompt: "critique this",
           base64Image: "BASE",
-          apiKey: { "NanoBananaPro-api-key": "AQ_KEY" }
+          apiKey: { "GoogleVertexAI-api-key": "AQ_KEY" }
         })) {
           // no-op
         }
@@ -721,7 +853,7 @@ test.describe("critiqueImageStream (google)", () => {
         for await (const _chunk of critiqueImageStream({
           prompt: "critique this",
           base64Image: "BASE",
-          apiKey: { "NanoBananaPro-api-key": "AQ_KEY" }
+          apiKey: { "GoogleVertexAI-api-key": "AQ_KEY" }
         })) {
           // no-op
         }
@@ -763,7 +895,7 @@ test.describe("critiqueImageStream (google)", () => {
         for await (const _chunk of critiqueImageStream({
           prompt: "critique this",
           base64Image: "BASE",
-          apiKey: { "NanoBananaPro-api-key": "AQ_KEY" }
+          apiKey: { "GoogleVertexAI-api-key": "AQ_KEY" }
         })) {
           // no-op
         }

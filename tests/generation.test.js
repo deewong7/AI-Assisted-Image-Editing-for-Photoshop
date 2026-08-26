@@ -375,7 +375,7 @@ test.describe("createGenerator", () => {
         skipMask: false,
         persistGeneratedImages: false,
         showModelParameters: true,
-        apiKey: { "NanoBananaPro-api-key": "AQ_KEY" },
+        apiKey: { "GoogleVertexAI-api-key": "AQ_KEY" },
         resolution: "2K",
         adaptiveResolutionSetting: false,
         currentJobCount: 0
