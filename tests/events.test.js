@@ -123,6 +123,7 @@ function createSavedPrefs(overrides = {}) {
     enableGeneratedGroupColorLabel: false,
     generatedGroupColorLabel: "blue",
     enableDeferredBatchRecovery: false,
+    allow4KGeneration: false,
     ...overrides
   };
 }
@@ -256,6 +257,47 @@ test.describe("generated image persistence preference", () => {
     assert.equal(args.state.persistGeneratedImages, true);
     assert.deepEqual(savedPrefs, [createSavedPrefs({
       persistGeneratedImages: true
+    })]);
+  });
+});
+
+test.describe("allow 4K generation preference", () => {
+  test("initializeUI reflects saved allow4KGeneration state", () => {
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      allow4KGeneration: createCheckbox(false)
+    };
+    const args = createBaseArgs(ui);
+    args.state.allow4KGeneration = true;
+
+    initializeUI(args);
+
+    assert.equal(ui.allow4KGeneration.checked, true);
+  });
+
+  test("clicking allow4KGeneration updates state and saves preference", () => {
+    const savedPrefs = [];
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      allow4KGeneration: createCheckbox(false)
+    };
+    const args = createBaseArgs(ui);
+    args.storage.savePluginPrefs = (_storage, prefs) => {
+      savedPrefs.push(prefs);
+    };
+    global.localStorage = {};
+
+    initializeUI(args);
+    bindEvents(args);
+
+    ui.allow4KGeneration.checked = true;
+    ui.allow4KGeneration.click();
+
+    assert.equal(args.state.allow4KGeneration, true);
+    assert.deepEqual(savedPrefs, [createSavedPrefs({
+      allow4KGeneration: true
     })]);
   });
 });

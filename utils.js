@@ -48,6 +48,42 @@ function base64ToArrayBuffer(base64, atobImpl = typeof atob === "function" ? ato
   return bytes.buffer;
 }
 
+function getModelResolutionLadder(selectedModel, options = {}) {
+  const {
+    seedreamModelId,
+    seedream5ModelId,
+    seedream5ProModelId,
+    grokModelId
+  } = options;
+
+  if (matchesModel(selectedModel, seedream5ProModelId)) {
+    return ["1K", "2K"];
+  }
+  if (matchesModel(selectedModel, seedream5ModelId)) {
+    return ["2K", "3K"];
+  }
+  if (matchesModel(selectedModel, seedreamModelId)) {
+    return ["2K", "4K"];
+  }
+  if (matchesModel(selectedModel, grokModelId)) {
+    return ["1K", "2K"];
+  }
+  return ["1K", "2K", "4K"];
+}
+
+function capResolution(resolution, selectedModel, options = {}) {
+  const allow4K = options.allow4KGeneration === true;
+  const ladder = getModelResolutionLadder(selectedModel, options);
+  const allowed = allow4K ? ladder : ladder.filter(value => value !== "4K");
+  const normalized = String(resolution || "").trim().toUpperCase();
+
+  if (allowed.includes(normalized)) {
+    return normalized;
+  }
+
+  return allowed[allowed.length - 1] || "2K";
+}
+
 function pickTier(longEdge, options = {}) {
   const {
     upgradeFactor = 1.5,
@@ -62,22 +98,24 @@ function pickTier(longEdge, options = {}) {
   const isSeedream5Model = matchesModel(selectedModel, seedream5ModelId);
   const isSeedream5ProModel = matchesModel(selectedModel, seedream5ProModelId);
 
+  let tier;
   if (longEdge <= base["1K"] * upgradeFactor) {
     if (isSeedreamModel) {
-      return "2K";
+      tier = "2K";
+    } else {
+      tier = "1K";
     }
-    return "1K";
+  } else if (longEdge <= base["2K"] * upgradeFactor) {
+    tier = "2K";
+  } else if (isSeedream5ProModel) {
+    tier = "2K";
+  } else if (isSeedream5Model) {
+    tier = "3K";
+  } else {
+    tier = "4K";
   }
-  if (longEdge <= base["2K"] * upgradeFactor) {
-    return "2K";
-  }
-  if (isSeedream5ProModel) {
-    return "2K";
-  }
-  if (isSeedream5Model) {
-    return "3K";
-  }
-  return "4K";
+
+  return capResolution(tier, selectedModel, options);
 }
 
 function getCurrentTime(date = new Date()) {
@@ -172,6 +210,8 @@ function savePluginPrefsToStorage(storage, prefs) {
 module.exports = {
   BASE_RESOLUTION,
   base64ToArrayBuffer,
+  getModelResolutionLadder,
+  capResolution,
   pickTier,
   getCurrentTime,
   migrateGoogleApiKeys,

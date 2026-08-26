@@ -168,7 +168,8 @@ function savePluginPrefsState(storage, state) {
     maxBatchCount,
     enableGeneratedGroupColorLabel: state.enableGeneratedGroupColorLabel === true,
     generatedGroupColorLabel,
-    enableDeferredBatchRecovery: state.enableDeferredBatchRecovery === true
+    enableDeferredBatchRecovery: state.enableDeferredBatchRecovery === true,
+    allow4KGeneration: state.allow4KGeneration === true
   });
 }
 
@@ -198,6 +199,9 @@ function initializeUI({ ui, state, models, logger, storage, defaultChatPromptTex
   }
   if (ui.enableDeferredBatchRecovery) {
     ui.enableDeferredBatchRecovery.checked = state.enableDeferredBatchRecovery === true;
+  }
+  if (ui.allow4KGeneration) {
+    ui.allow4KGeneration.checked = state.allow4KGeneration === true;
   }
   state.maxWaitingTimeSeconds = normalizeMaxWaitingTimeSeconds(state.maxWaitingTimeSeconds);
   if (ui.maxWaitingTimeSlider) {
@@ -599,6 +603,14 @@ function bindEvents({
     ui.enableDeferredBatchRecovery.addEventListener("click", (e) => {
       state.enableDeferredBatchRecovery = e.target.checked;
       savePluginPrefsState(storage, state);
+    });
+  }
+
+  if (ui.allow4KGeneration) {
+    ui.allow4KGeneration.addEventListener("click", (e) => {
+      state.allow4KGeneration = e.target.checked;
+      savePluginPrefsState(storage, state);
+      renderModelUI(ui, state, models, logLine);
     });
   }
 

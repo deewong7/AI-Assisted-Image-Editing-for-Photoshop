@@ -8,7 +8,7 @@ Bring state-of-the-art image generation and edits directly into Photoshop. This 
 ## What this plugin does
 - In-Photoshop generation on a selected region
 - Supports multiple providers and models
-- `Nano Banana Pro` and `SeeDream 4.5` support **4K** output
+- `Nano Banana Pro` and `SeeDream 4.5` support **4K** output when **Allow 4K Generation** is enabled in Preference; otherwise they cap at **2K**
 - `SeeDream 5.0` supports **2K** and **3K** output
 - `SeeDream 5.0 Pro` supports **1K** and **2K** output
 - Optional reference-image guidance
