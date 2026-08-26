@@ -87,6 +87,28 @@ test.describe("pickTier", () => {
     });
     assert.equal(tier, "4K");
   });
+
+  test("picks 1K for seedream 5 pro under 1K threshold", () => {
+    const tier = utils.pickTier(800, {
+      upgradeFactor: 1.5,
+      selectedModel: "seedream-5-pro",
+      seedreamModelId: ["seedream-4", "seedream-5"],
+      seedream5ModelId: "seedream-5",
+      seedream5ProModelId: "seedream-5-pro"
+    });
+    assert.equal(tier, "1K");
+  });
+
+  test("caps seedream 5 pro at 2K above 2K threshold", () => {
+    const tier = utils.pickTier(4000, {
+      upgradeFactor: 1.5,
+      selectedModel: "seedream-5-pro",
+      seedreamModelId: ["seedream-4", "seedream-5"],
+      seedream5ModelId: "seedream-5",
+      seedream5ProModelId: "seedream-5-pro"
+    });
+    assert.equal(tier, "2K");
+  });
 });
 
 test.describe("getCurrentTime", () => {

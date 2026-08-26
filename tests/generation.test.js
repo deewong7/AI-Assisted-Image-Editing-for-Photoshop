@@ -251,6 +251,85 @@ test.describe("createGenerator", () => {
     assert.equal(providerCall.options.resolution, "3K");
   });
 
+  test("uses 2K adaptive resolution for SeeDream 5.0 Pro", async () => {
+    let providerCall;
+    let pickTierOptions;
+
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          selection: {
+            bounds: {
+              left: 0,
+              right: 4000,
+              top: 0,
+              bottom: 4000,
+              width: 4000,
+              height: 4000
+            }
+          }
+        }
+      },
+      core: {
+        showAlert: () => {}
+      },
+      ui: {
+        testCheckbox: { checked: false },
+        promptInput: { value: "test prompt" },
+        generateButton: { disabled: false, innerText: "Generate" },
+        allowNSFW: { checked: false },
+        temperature: { value: "1.0" },
+        topP: { value: "0.90" },
+        imageToProcess: {},
+        upgradeFactorSlider: { value: "1.5" }
+      },
+      state: {
+        selectedModel: "doubao-seedream-5-0-pro-260628",
+        aspectRatio: "3:4",
+        textToImage: false,
+        imageArray: [],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: false,
+        apiKey: { "SeeDream-api-key": "KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: true,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {}
+      },
+      generateWithProvider: async (modelId, options) => {
+        providerCall = { modelId, options };
+        return "generated-b64";
+      },
+      critiqueWithProvider: async function* () {},
+      logLine: () => {},
+      utils: {
+        pickTier: (longEdge, options) => {
+          pickTierOptions = { longEdge, options };
+          return "2K";
+        }
+      },
+      seedreamModelId: ["doubao-seedream-4-5-251128", "doubao-seedream-5-0-260128"],
+      seedream5ModelId: "doubao-seedream-5-0-260128",
+      seedream5ProModelId: "doubao-seedream-5-0-pro-260628",
+      grokModelId: "grok-imagine-image"
+    });
+
+    await generator.generate();
+
+    assert.equal(pickTierOptions.longEdge, 4000);
+    assert.equal(pickTierOptions.options.seedream5ProModelId, "doubao-seedream-5-0-pro-260628");
+    assert.equal(providerCall.modelId, "doubao-seedream-5-0-pro-260628");
+    assert.equal(providerCall.options.resolution, "2K");
+  });
+
   test("starts all batch requests before awaiting results and places after all settle", async () => {
     const deferreds = Array.from({ length: 4 }, () => createDeferred());
     const providerCalls = [];

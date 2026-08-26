@@ -10,6 +10,7 @@ Bring state-of-the-art image generation and edits directly into Photoshop. This 
 - Supports multiple providers and models
 - `Nano Banana Pro` and `SeeDream 4.5` support **4K** output
 - `SeeDream 5.0` supports **2K** and **3K** output
+- `SeeDream 5.0 Pro` supports **1K** and **2K** output
 - Optional reference-image guidance
 - Adaptive resolution selection for better quality vs. speed
 - Places results into the current document as new layers
@@ -24,7 +25,7 @@ Bring state-of-the-art image generation and edits directly into Photoshop. This 
 
 ## Supported models
 - Google: Nano Banana Pro 3
-- ByteDance: SeeDream 4.5, SeeDream 5.0
+- ByteDance: SeeDream 4.5, SeeDream 5.0, SeeDream 5.0 Pro
 - xAI: Grok Imagine
 
 ## Quick start

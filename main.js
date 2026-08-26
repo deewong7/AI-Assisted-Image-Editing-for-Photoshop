@@ -16,6 +16,7 @@ const { createDeferredBatchManager } = require("./deferred-batches");
 const {
   SEEDREAM,
   SEEDREAM_5,
+  SEEDREAM_5_PRO,
   NANOBANANA_PRO,
   NANOBANANA_2,
   GROK_IMAGINE,
@@ -77,6 +78,7 @@ const generator = createGenerator({
   utils,
   seedreamModelId: [SEEDREAM, SEEDREAM_5],
   seedream5ModelId: SEEDREAM_5,
+  seedream5ProModelId: SEEDREAM_5_PRO,
   grokModelId: GROK_IMAGINE,
   nanoBananaModelId: NANOBANANA_PRO
 });
@@ -140,7 +142,7 @@ entrypoints.setup({
 initializeUI({
   ui,
   state,
-  models: { SEEDREAM, SEEDREAM_5, NANOBANANA_PRO, NANOBANANA_2, GROK_IMAGINE },
+  models: { SEEDREAM, SEEDREAM_5, SEEDREAM_5_PRO, NANOBANANA_PRO, NANOBANANA_2, GROK_IMAGINE },
   logger,
   storage,
   defaultChatPromptText: DEFAULT_CHAT_PROMPT
@@ -149,7 +151,7 @@ initializeUI({
 bindEvents({
   ui,
   state,
-  models: { SEEDREAM, SEEDREAM_5, NANOBANANA_PRO, NANOBANANA_2, GROK_IMAGINE },
+  models: { SEEDREAM, SEEDREAM_5, SEEDREAM_5_PRO, NANOBANANA_PRO, NANOBANANA_2, GROK_IMAGINE },
   logger,
   storage,
   generator,

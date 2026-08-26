@@ -1,10 +1,12 @@
 const SEEDREAM = "doubao-seedream-4-5-251128";
 const SEEDREAM_5 = "doubao-seedream-5-0-260128";
-const supportedModels = [SEEDREAM, SEEDREAM_5];
+const SEEDREAM_5_PRO = "doubao-seedream-5-0-pro-260628";
+const supportedModels = [SEEDREAM, SEEDREAM_5, SEEDREAM_5_PRO];
 
 const MODEL_RESOLUTIONS = {
   [SEEDREAM]: ["2K", "4K"],
-  [SEEDREAM_5]: ["2K", "3K"]
+  [SEEDREAM_5]: ["2K", "3K"],
+  [SEEDREAM_5_PRO]: ["1K", "2K"]
 };
 
 function parseResolutionTier(resolution) {
@@ -84,7 +86,7 @@ async function generateImage(options) {
         size: effectiveResolution,
         watermark: false,
         response_format: "b64_json",
-        sequential_image_generation: "disabled",
+        ...(targetModel === SEEDREAM_5_PRO ? {} : { sequential_image_generation: "disabled" }),
         optimize_prompt_options: {
           mode: "standard"
         }

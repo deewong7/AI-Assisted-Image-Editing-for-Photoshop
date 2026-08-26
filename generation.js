@@ -21,6 +21,7 @@ function createGenerator({
   utils,
   seedreamModelId,
   seedream5ModelId,
+  seedream5ProModelId,
   grokModelId,
   nanoBananaModelId,
   setTimeoutImpl = setTimeout,
@@ -405,7 +406,8 @@ function createGenerator({
         upgradeFactor: state.upgradeFactor,
         selectedModel: targetModel,
         seedreamModelId,
-        seedream5ModelId
+        seedream5ModelId,
+        seedream5ProModelId
       })
     }
 

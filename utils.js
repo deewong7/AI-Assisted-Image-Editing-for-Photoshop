@@ -54,11 +54,13 @@ function pickTier(longEdge, options = {}) {
     selectedModel,
     seedreamModelId,
     seedream5ModelId,
+    seedream5ProModelId,
     base = BASE_RESOLUTION
   } = options;
 
   const isSeedreamModel = matchesModel(selectedModel, seedreamModelId);
   const isSeedream5Model = matchesModel(selectedModel, seedream5ModelId);
+  const isSeedream5ProModel = matchesModel(selectedModel, seedream5ProModelId);
 
   if (longEdge <= base["1K"] * upgradeFactor) {
     if (isSeedreamModel) {
@@ -67,6 +69,9 @@ function pickTier(longEdge, options = {}) {
     return "1K";
   }
   if (longEdge <= base["2K"] * upgradeFactor) {
+    return "2K";
+  }
+  if (isSeedream5ProModel) {
     return "2K";
   }
   if (isSeedream5Model) {
