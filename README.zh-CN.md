@@ -44,15 +44,6 @@
 
 如果只保存了一把 Google key，Blendrr 会使用对应的后端。两把 Google key 都保存时，由 **Google API Backend** 选择 Google AI Studio 或 Vertex AI。
 
-## 截图
-### 主页面
-<!-- ![Main Page](./images/main.jpg) -->
-<img src="./images/main.jpg" height="800">
-
-### 偏好设置页
-<!-- ![Preference Page](./images/preference.jpg) -->
-<img src="./images/preference.jpg" height="800">
-
 ## 兼容性
 - macOS
 - Windows

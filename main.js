@@ -161,7 +161,7 @@ bindEvents({
   selection,
   app,
   core,
-  defaultPromptText: DEFAULT_PROMPT_PRESETS.default,
+  defaultPromptText: "",
   defaultChatPromptText: DEFAULT_CHAT_PROMPT,
   deferredBatchManager
 });
