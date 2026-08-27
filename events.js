@@ -21,30 +21,48 @@ function normalizeGoogleApiBackend(value) {
   return GOOGLE_API_BACKENDS.has(value) ? value : "google-ai-studio";
 }
 
-function updateApiKey(ui, state, storage, update = true) {
-  let changed = false;
-
+function markStoredApiKeysValid(ui, state) {
   for (const { fieldKey, keyName } of KEY_MAP) {
     const el = ui[fieldKey];
     if (!el) continue;
-
-    if (!update) {
-      if (typeof state.apiKey[keyName] === "string" && state.apiKey[keyName].length > 0) {
-        el.valid = true;
-      }
-      continue;
+    if (typeof state.apiKey[keyName] === "string" && state.apiKey[keyName].length > 0) {
+      el.valid = true;
     }
+  }
+}
 
-    const value = el.value?.trim();
+function clearApiKeyFields(ui) {
+  for (const { fieldKey } of KEY_MAP) {
+    const el = ui[fieldKey];
+    if (el) {
+      el.value = "";
+    }
+  }
+}
+
+function persistPendingApiKeys(ui, state, storage, pendingEdits) {
+  let changed = false;
+
+  for (const { fieldKey, keyName } of KEY_MAP) {
+    if (!Object.prototype.hasOwnProperty.call(pendingEdits, keyName)) continue;
+
+    const value = typeof pendingEdits[keyName] === "string" ? pendingEdits[keyName].trim() : "";
+    delete pendingEdits[keyName];
     if (!value) continue;
 
     state.apiKey[keyName] = value;
-    el.value = "";
-    el.valid = true;
+    const el = ui[fieldKey];
+    if (el) {
+      el.valid = true;
+    }
     changed = true;
   }
 
-  if (update && changed) {
+  for (const keyName of Object.keys(pendingEdits)) {
+    delete pendingEdits[keyName];
+  }
+
+  if (changed) {
     storage.saveApiKeys(localStorage, state.apiKey);
   }
 }
@@ -181,7 +199,7 @@ function normalizePromptPresetMap(presets) {
 }
 
 function initializeUI({ ui, state, models, logger, storage, defaultChatPromptText = "" }) {
-  updateApiKey(ui, state, storage, false);
+  markStoredApiKeysValid(ui, state);
   populatePromptPresets(ui, state.promptPresets);
   renderModelUI(ui, state, models, logger.logLine);
   if (ui.chatPromptInput && !ui.chatPromptInput.value?.trim()) {
@@ -252,6 +270,28 @@ function bindEvents({
   deferredBatchManager
 }) {
   const logLine = logger.logLine;
+  const pendingApiKeyEdits = {};
+  let ignoreApiKeyFieldInput = false;
+
+  function withIgnoredApiKeyInput(fn) {
+    ignoreApiKeyFieldInput = true;
+    try {
+      fn();
+    } finally {
+      ignoreApiKeyFieldInput = false;
+    }
+  }
+
+  for (const { fieldKey, keyName } of KEY_MAP) {
+    const el = ui[fieldKey];
+    if (!el || typeof el.addEventListener !== "function") continue;
+    const recordEdit = (e) => {
+      if (ignoreApiKeyFieldInput) return;
+      pendingApiKeyEdits[keyName] = (e?.target || el).value;
+    };
+    el.addEventListener("input", recordEdit);
+    el.addEventListener("change", recordEdit);
+  }
 
   if (ui.promptInput) {
     ui.promptInput.addEventListener("input", () => {
@@ -471,20 +511,24 @@ function bindEvents({
 
   if (ui.updateApiKey) {
     ui.updateApiKey.addEventListener("click", () => {
-      updateApiKey(ui, state, storage, true);
+      persistPendingApiKeys(ui, state, storage, pendingApiKeyEdits);
       if (ui.showKey) {
         ui.showKey.checked = false;
       }
+      withIgnoredApiKeyInput(() => clearApiKeyFields(ui));
     });
   }
 
   if (ui.showKey) {
     ui.showKey.addEventListener("click", (e) => {
-      for (const { fieldKey, keyName } of KEY_MAP) {
-        const inputField = ui[fieldKey];
-        if (!inputField) continue;
-        inputField.value = e.target.checked ? state.apiKey[keyName] : "";
-      }
+      withIgnoredApiKeyInput(() => {
+        for (const { fieldKey, keyName } of KEY_MAP) {
+          const inputField = ui[fieldKey];
+          if (!inputField) continue;
+          inputField.value = e.target.checked ? state.apiKey[keyName] : "";
+          delete pendingApiKeyEdits[keyName];
+        }
+      });
     });
   }
 
