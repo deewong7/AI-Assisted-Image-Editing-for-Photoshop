@@ -44,15 +44,6 @@ Choose one or more:
 
 If only one Google key is saved, Blendrr uses that backend. If both Google keys are saved, the **Google API Backend** picker chooses Google AI Studio or Vertex AI.
 
-## Screenshots
-### Main Page
-<!-- ![Main Page](./images/main.jpg) -->
-<img src="./images/main.jpg" height="800">
-
-### Preference Page
-<!-- ![Preference Page](./images/preference.jpg) -->
-<img src="./images/preference.jpg" height="800">
-
 ## Compatibility
 - macOS
 - Windows
