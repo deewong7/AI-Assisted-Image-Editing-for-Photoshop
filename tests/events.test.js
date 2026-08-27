@@ -32,6 +32,44 @@ function createButton() {
   };
 }
 
+function createTextField(initialValue = "") {
+  const listeners = {};
+  return {
+    value: initialValue,
+    valid: false,
+    addEventListener(type, handler) {
+      listeners[type] = handler;
+    },
+    input(nextValue) {
+      this.value = nextValue;
+      if (typeof listeners.input === "function") {
+        listeners.input({ target: this });
+      }
+    },
+    change(nextValue) {
+      if (nextValue !== undefined) {
+        this.value = nextValue;
+      }
+      if (typeof listeners.change === "function") {
+        listeners.change({ target: this });
+      }
+    }
+  };
+}
+
+function createApiKeyUi() {
+  return {
+    chatPromptInput: { value: "", disabled: false },
+    enableCritiquePromptEdit: createCheckbox(false),
+    apiKeyGoogleAiStudio: createTextField(),
+    apiKeyGoogleVertexAi: createTextField(),
+    apiKeyBytedance: createTextField(),
+    apiKeyXai: createTextField(),
+    updateApiKey: createButton(),
+    showKey: createCheckbox(false)
+  };
+}
+
 function createBatchSlider(initialValue = "1", maxValue = "8") {
   const listeners = {};
   return {
@@ -932,5 +970,167 @@ test.describe("prompt library import/export", () => {
     assert.equal(alerts[0], "Failed to import prompt library. Check log for details.");
     assert.equal(logs.some(line => line.includes("Failed to import prompt library: Invalid JSON file.")), true);
     assert.equal(ui.importPromptLibraryButton.disabled, false);
+  });
+});
+
+test.describe("api key updates", () => {
+  test("initializeUI marks stored keys valid without filling the fields", () => {
+    const ui = createApiKeyUi();
+    const args = createBaseArgs(ui);
+    args.state.apiKey = {
+      "GoogleAIStudio-api-key": "STUDIO_KEY",
+      "GoogleVertexAI-api-key": "VERTEX_KEY"
+    };
+
+    initializeUI(args);
+
+    assert.equal(ui.apiKeyGoogleAiStudio.valid, true);
+    assert.equal(ui.apiKeyGoogleVertexAi.valid, true);
+    assert.equal(ui.apiKeyGoogleAiStudio.value, "");
+    assert.equal(ui.apiKeyGoogleVertexAi.value, "");
+  });
+
+  test("updating only the Studio field leaves the Vertex key unchanged even if the Vertex field value leaked", () => {
+    const savedKeys = [];
+    const ui = createApiKeyUi();
+    const args = createBaseArgs(ui);
+    args.state.apiKey = {
+      "GoogleAIStudio-api-key": "OLD_STUDIO",
+      "GoogleVertexAI-api-key": "VERTEX_KEY",
+      "SeeDream-api-key": "BYTE_KEY",
+      "xAI-api-key": "XAI_KEY"
+    };
+    args.storage.saveApiKeys = (_storage, apiKey) => {
+      savedKeys.push({ ...apiKey });
+    };
+    global.localStorage = {};
+
+    bindEvents(args);
+
+    ui.apiKeyGoogleAiStudio.input("NEW_STUDIO");
+    ui.apiKeyGoogleVertexAi.value = "NEW_STUDIO";
+    ui.updateApiKey.click();
+
+    assert.equal(args.state.apiKey["GoogleAIStudio-api-key"], "NEW_STUDIO");
+    assert.equal(args.state.apiKey["GoogleVertexAI-api-key"], "VERTEX_KEY");
+    assert.equal(args.state.apiKey["SeeDream-api-key"], "BYTE_KEY");
+    assert.equal(args.state.apiKey["xAI-api-key"], "XAI_KEY");
+    assert.equal(savedKeys.length, 1);
+    assert.equal(savedKeys[0]["GoogleAIStudio-api-key"], "NEW_STUDIO");
+    assert.equal(savedKeys[0]["GoogleVertexAI-api-key"], "VERTEX_KEY");
+    assert.equal(ui.apiKeyGoogleAiStudio.value, "");
+    assert.equal(ui.apiKeyGoogleVertexAi.value, "");
+    assert.equal(ui.showKey.checked, false);
+  });
+
+  test("updating only the Vertex field leaves the Studio key unchanged", () => {
+    const savedKeys = [];
+    const ui = createApiKeyUi();
+    const args = createBaseArgs(ui);
+    args.state.apiKey = {
+      "GoogleAIStudio-api-key": "STUDIO_KEY",
+      "GoogleVertexAI-api-key": "OLD_VERTEX"
+    };
+    args.storage.saveApiKeys = (_storage, apiKey) => {
+      savedKeys.push({ ...apiKey });
+    };
+    global.localStorage = {};
+
+    bindEvents(args);
+
+    ui.apiKeyGoogleVertexAi.input("NEW_VERTEX");
+    ui.apiKeyGoogleAiStudio.value = "NEW_VERTEX";
+    ui.updateApiKey.click();
+
+    assert.equal(args.state.apiKey["GoogleAIStudio-api-key"], "STUDIO_KEY");
+    assert.equal(args.state.apiKey["GoogleVertexAI-api-key"], "NEW_VERTEX");
+    assert.equal(savedKeys.length, 1);
+    assert.equal(savedKeys[0]["GoogleAIStudio-api-key"], "STUDIO_KEY");
+  });
+
+  test("updating Bytedance or xAI does not touch Google keys", () => {
+    const savedKeys = [];
+    const ui = createApiKeyUi();
+    const args = createBaseArgs(ui);
+    args.state.apiKey = {
+      "GoogleAIStudio-api-key": "STUDIO_KEY",
+      "GoogleVertexAI-api-key": "VERTEX_KEY",
+      "SeeDream-api-key": "OLD_BYTE",
+      "xAI-api-key": "OLD_XAI"
+    };
+    args.storage.saveApiKeys = (_storage, apiKey) => {
+      savedKeys.push({ ...apiKey });
+    };
+    global.localStorage = {};
+
+    bindEvents(args);
+
+    ui.apiKeyBytedance.input("NEW_BYTE");
+    ui.apiKeyXai.input("NEW_XAI");
+    ui.updateApiKey.click();
+
+    assert.equal(args.state.apiKey["GoogleAIStudio-api-key"], "STUDIO_KEY");
+    assert.equal(args.state.apiKey["GoogleVertexAI-api-key"], "VERTEX_KEY");
+    assert.equal(args.state.apiKey["SeeDream-api-key"], "NEW_BYTE");
+    assert.equal(args.state.apiKey["xAI-api-key"], "NEW_XAI");
+    assert.equal(savedKeys.length, 1);
+  });
+
+  test("Show API Key fills each field from its own stored key and toggling it off does not persist", () => {
+    const savedKeys = [];
+    const ui = createApiKeyUi();
+    const args = createBaseArgs(ui);
+    args.state.apiKey = {
+      "GoogleAIStudio-api-key": "STUDIO_KEY",
+      "GoogleVertexAI-api-key": "VERTEX_KEY"
+    };
+    args.storage.saveApiKeys = (_storage, apiKey) => {
+      savedKeys.push({ ...apiKey });
+    };
+    global.localStorage = {};
+
+    bindEvents(args);
+
+    ui.showKey.checked = true;
+    ui.showKey.click();
+
+    assert.equal(ui.apiKeyGoogleAiStudio.value, "STUDIO_KEY");
+    assert.equal(ui.apiKeyGoogleVertexAi.value, "VERTEX_KEY");
+
+    ui.showKey.checked = false;
+    ui.showKey.click();
+
+    assert.equal(ui.apiKeyGoogleAiStudio.value, "");
+    assert.equal(ui.apiKeyGoogleVertexAi.value, "");
+    assert.equal(savedKeys.length, 0);
+    assert.equal(args.state.apiKey["GoogleAIStudio-api-key"], "STUDIO_KEY");
+    assert.equal(args.state.apiKey["GoogleVertexAI-api-key"], "VERTEX_KEY");
+  });
+
+  test("Show API Key then Update with no edits does not overwrite an untouched key", () => {
+    const savedKeys = [];
+    const ui = createApiKeyUi();
+    const args = createBaseArgs(ui);
+    args.state.apiKey = {
+      "GoogleAIStudio-api-key": "STUDIO_KEY",
+      "GoogleVertexAI-api-key": "VERTEX_KEY"
+    };
+    args.storage.saveApiKeys = (_storage, apiKey) => {
+      savedKeys.push({ ...apiKey });
+    };
+    global.localStorage = {};
+
+    bindEvents(args);
+
+    ui.showKey.checked = true;
+    ui.showKey.click();
+    ui.updateApiKey.click();
+
+    assert.equal(args.state.apiKey["GoogleAIStudio-api-key"], "STUDIO_KEY");
+    assert.equal(args.state.apiKey["GoogleVertexAI-api-key"], "VERTEX_KEY");
+    assert.equal(savedKeys.length, 0);
+    assert.equal(ui.apiKeyGoogleAiStudio.value, "");
+    assert.equal(ui.apiKeyGoogleVertexAi.value, "");
+    assert.equal(ui.showKey.checked, false);
   });
 });
