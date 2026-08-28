@@ -70,6 +70,53 @@ function createApiKeyUi() {
   };
 }
 
+function createMenuItem(value, selected = false) {
+  const attrs = {};
+  if (selected) {
+    attrs.selected = "";
+  }
+  return {
+    value,
+    selected,
+    setAttribute(name, attrValue) {
+      attrs[name] = attrValue;
+      if (name === "selected") {
+        this.selected = true;
+      }
+    },
+    removeAttribute(name) {
+      delete attrs[name];
+      if (name === "selected") {
+        this.selected = false;
+      }
+    }
+  };
+}
+
+function createGoogleBackendPicker(initialValue = "google-ai-studio") {
+  const listeners = {};
+  const items = [
+    createMenuItem("google-ai-studio", initialValue === "google-ai-studio"),
+    createMenuItem("vertex-ai", initialValue === "vertex-ai")
+  ];
+  return {
+    value: initialValue,
+    items,
+    addEventListener(type, handler) {
+      listeners[type] = handler;
+    },
+    querySelectorAll(selector) {
+      return selector === "sp-menu-item" ? items : [];
+    },
+    change(nextValue) {
+      this.value = String(nextValue);
+      if (typeof listeners.change === "function") {
+        listeners.change({ target: this });
+      }
+    }
+  };
+}
+
 function createBatchSlider(initialValue = "1", maxValue = "8") {
   const listeners = {};
   return {
@@ -396,12 +443,29 @@ test.describe("google api backend preference", () => {
     assert.equal(ui.googleApiBackend.value, "google-ai-studio");
   });
 
+  test("initializeUI restores Vertex AI as the selected picker item", () => {
+    const ui = {
+      chatPromptInput: { value: "", disabled: false },
+      enableCritiquePromptEdit: createCheckbox(false),
+      googleApiBackend: createGoogleBackendPicker("google-ai-studio")
+    };
+    const args = createBaseArgs(ui);
+    args.state.googleApiBackend = "vertex-ai";
+
+    initializeUI(args);
+
+    assert.equal(ui.googleApiBackend.value, "vertex-ai");
+    assert.equal(ui.googleApiBackend.items[0].selected, false);
+    assert.equal(ui.googleApiBackend.items[1].selected, true);
+    assert.equal(ui.googleApiBackend.items[1].value, "vertex-ai");
+  });
+
   test("changing googleApiBackend saves state", () => {
     const savedPrefs = [];
     const ui = {
       chatPromptInput: { value: "", disabled: false },
       enableCritiquePromptEdit: createCheckbox(false),
-      googleApiBackend: createBatchSlider("auto", "16")
+      googleApiBackend: createGoogleBackendPicker("google-ai-studio")
     };
     const args = createBaseArgs(ui);
     args.storage.savePluginPrefs = (_storage, prefs) => {
@@ -415,6 +479,8 @@ test.describe("google api backend preference", () => {
     ui.googleApiBackend.change("vertex-ai");
 
     assert.equal(args.state.googleApiBackend, "vertex-ai");
+    assert.equal(ui.googleApiBackend.items[0].selected, false);
+    assert.equal(ui.googleApiBackend.items[1].selected, true);
     assert.deepEqual(savedPrefs, [createSavedPrefs({
       googleApiBackend: "vertex-ai"
     })]);
