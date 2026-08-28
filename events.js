@@ -21,6 +21,28 @@ function normalizeGoogleApiBackend(value) {
   return GOOGLE_API_BACKENDS.has(value) ? value : "google-ai-studio";
 }
 
+function syncGoogleApiBackendPicker(ui, backend) {
+  const picker = ui.googleApiBackend;
+  if (!picker) return;
+
+  picker.value = backend;
+  const items = typeof picker.querySelectorAll === "function"
+    ? Array.from(picker.querySelectorAll("sp-menu-item"))
+    : [];
+
+  items.forEach(item => {
+    const selected = item.value === backend;
+    item.selected = selected;
+    if (selected) {
+      if (typeof item.setAttribute === "function") {
+        item.setAttribute("selected", "");
+      }
+    } else if (typeof item.removeAttribute === "function") {
+      item.removeAttribute("selected");
+    }
+  });
+}
+
 function markStoredApiKeysValid(ui, state) {
   for (const { fieldKey, keyName } of KEY_MAP) {
     const el = ui[fieldKey];
@@ -212,9 +234,7 @@ function initializeUI({ ui, state, models, logger, storage, defaultChatPromptTex
     ui.persistGeneratedImages.checked = state.persistGeneratedImages === true;
   }
   state.googleApiBackend = normalizeGoogleApiBackend(state.googleApiBackend);
-  if (ui.googleApiBackend) {
-    ui.googleApiBackend.value = state.googleApiBackend;
-  }
+  syncGoogleApiBackendPicker(ui, state.googleApiBackend);
   if (ui.enableDeferredBatchRecovery) {
     ui.enableDeferredBatchRecovery.checked = state.enableDeferredBatchRecovery === true;
   }
@@ -669,7 +689,7 @@ function bindEvents({
   if (ui.googleApiBackend) {
     ui.googleApiBackend.addEventListener("change", (e) => {
       state.googleApiBackend = normalizeGoogleApiBackend(e.target?.value);
-      ui.googleApiBackend.value = state.googleApiBackend;
+      syncGoogleApiBackendPicker(ui, state.googleApiBackend);
       savePluginPrefsState(storage, state);
     });
   }
