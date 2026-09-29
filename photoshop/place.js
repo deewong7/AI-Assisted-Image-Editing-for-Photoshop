@@ -85,7 +85,7 @@ function createPlacer({ app, core, constants, fs, imaging, base64ToArrayBuffer, 
     let layerSuffix = 1
     for (let i = 0; i < layers.length; i += 1) {
       const layer = layers[i]
-      if (layer.name.startsWith("Generated Image")) {
+      if (layer.name.startsWith("生成图像")) {
         layerSuffix += 1
       }
     }
@@ -133,8 +133,8 @@ function createPlacer({ app, core, constants, fs, imaging, base64ToArrayBuffer, 
 
       const layerSuffix = findLayerSuffix(layers)
       placedLayer.name = suffix
-        ? `Generated Image ${layerSuffix} - ${suffix}`
-        : `Generated Image ${layerSuffix}`
+        ? `生成图像 ${layerSuffix} - ${suffix}`
+        : `生成图像 ${layerSuffix}`
 
       await applyMaskWithGaussianBlur(placedLayer, bounds, options.skipMask, 0.10, true)
     }
@@ -164,7 +164,7 @@ function createPlacer({ app, core, constants, fs, imaging, base64ToArrayBuffer, 
   }
 
   function createBatchGroupName(suffix = "") {
-    return suffix ? `Generated Batch - ${suffix}` : "Generated Batch"
+    return suffix ? `生成批次 - ${suffix}` : "生成批次"
   }
 
   async function setLayerColorLabel(layerId, colorLabel) {

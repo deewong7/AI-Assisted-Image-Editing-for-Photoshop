@@ -220,13 +220,13 @@ function renderModelUI(ui, state, models, logLine) {
   if (state.selectedModel !== "localtest" && ui.testCheckbox) {
     ui.testCheckbox.checked = false;
     if (ui.generateButton) {
-      ui.generateButton.innerText = "Generate";
+      ui.generateButton.innerText = "生成";
       ui.generateButton.style.backgroundColor = "";
     }
   }
 
   if (typeof logLine === "function") {
-    logLine("Update model to:", state.selectedModel, state.resolution);
+    logLine("更新模型为:", state.selectedModel, state.resolution);
   }
 }
 
@@ -283,7 +283,7 @@ function appendReferencePreview(ui, base64, count) {
     ui.refImagePreviewDiv.style.display = "";
   }
   if (ui.refCount) {
-    ui.refCount.innerText = `Reference Image Preview Count: ${count}`;
+    ui.refCount.innerText = `参考图预览数量: ${count}`;
   }
 }
 
@@ -295,7 +295,7 @@ function clearReferencePreview(ui) {
     ui.refImagePreviewDiv.style.display = "none";
   }
   if (ui.refCount) {
-    ui.refCount.innerText = "Reference Image Preview";
+    ui.refCount.innerText = "参考图预览";
   }
 }
 
@@ -303,7 +303,7 @@ function renderJobCount(ui, count) {
   if (!ui.jobCount) return;
   if (count >= 1) {
     ui.jobCount.style.display = "";
-    ui.jobCount.textContent = `Current Jobs: ${count}`;
+    ui.jobCount.textContent = `当前任务数: ${count}`;
   } else {
     ui.jobCount.style.display = "none";
     ui.jobCount.textContent = "";
@@ -320,7 +320,7 @@ function renderBatchProgress(ui, completed, total) {
 
   const safeCompleted = Math.min(total, Math.max(0, Number(completed) || 0));
   ui.jobCount.style.display = "";
-  ui.jobCount.textContent = `Batch Progress: ${safeCompleted}/${total}`;
+  ui.jobCount.textContent = `批量进度: ${safeCompleted}/${total}`;
 }
 
 function escapeHtml(value) {
@@ -349,7 +349,7 @@ function renderDeferredBatchPlacements(ui, placements) {
 
   ui.deferredBatchList.style.display = "";
   ui.deferredBatchList.innerHTML = pendingPlacements.map(entry => {
-    const docName = escapeHtml(entry.docName || "Unknown Document");
+    const docName = escapeHtml(entry.docName || "未命名文档");
     const successCount = Number(entry.successCount) || 0;
     const requestedCount = Math.max(Number(entry.requestedCount) || 0, successCount);
     const batchId = escapeHtml(entry.id || "");
@@ -359,8 +359,8 @@ function renderDeferredBatchPlacements(ui, placements) {
           quiet
           class="deferredBatchInsertButton"
           data-batch-id="${batchId}"
-          title="Insert generated batch into original document"
-          aria-label="Insert generated batch into original document"
+          title="将生成的批次插入原始文档"
+          aria-label="将生成的批次插入原始文档"
         >⤓</sp-action-button>
         <sp-label class="deferredBatchText">${docName} ${successCount}/${requestedCount}</sp-label>
       </div>

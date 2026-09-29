@@ -61,8 +61,8 @@ function disposeImageData(imageData) {
 function createSelection({ app, constants, core, imaging, logLine }) {
   async function getImageDataFromSelection(bounds, options = {}) {
     if (!bounds) {
-      core.showAlert("No Selection.");
-      throw new Error("No Selection");
+      core.showAlert("未建立选区。");
+      throw new Error("未建立选区");
     }
 
     const isSixteenBit = isSixteenBitDocument(app, constants);

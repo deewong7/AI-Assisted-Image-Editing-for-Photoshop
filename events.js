@@ -386,13 +386,13 @@ function bindEvents({
       try {
         const path = await openImageFolder();
         if (typeof logLine === "function") {
-          logLine("Opened image folder:\n" + path);
+          logLine("已打开图像文件夹：\n" + path);
         }
       } catch (error) {
         if (typeof logLine === "function") {
-          logLine("Failed to open image folder: " + (error?.message || String(error)));
+          logLine("打开图像文件夹失败：" + (error?.message || String(error)));
         }
-        core.showAlert("Failed to open image folder. Check log for details.");
+        core.showAlert("打开图像文件夹失败，详情请查看日志。");
       } finally {
         ui.openImageFolderButton.disabled = false;
       }
@@ -409,16 +409,16 @@ function bindEvents({
           return;
         }
         if (typeof logLine === "function") {
-          logLine("Exported " + Object.keys(currentPresets).length + " prompt preset(s).");
+          logLine("已导出 " + Object.keys(currentPresets).length + " 个提示词预设。");
           if (result?.filePath) {
-            logLine("Prompt library exported to:\n" + result.filePath);
+            logLine("提示词库已导出至：\n" + result.filePath);
           }
         }
       } catch (error) {
         if (typeof logLine === "function") {
-          logLine("Failed to export prompt library: " + (error?.message || String(error)));
+          logLine("导出提示词库失败：" + (error?.message || String(error)));
         }
-        core.showAlert("Failed to export prompt library. Check log for details.");
+        core.showAlert("导出提示词库失败，详情请查看日志。");
       } finally {
         ui.exportPromptLibraryButton.disabled = false;
       }
@@ -437,7 +437,7 @@ function bindEvents({
         const importedPresets = normalizePromptPresetMap(result.presets);
         const importedKeys = Object.keys(importedPresets);
         if (importedKeys.length === 0) {
-          throw new Error("No valid prompt presets found in selected file.");
+          throw new Error("选定文件中未找到有效的提示词预设。");
         }
 
         const existingPresets = normalizePromptPresetMap(state.promptPresets);
@@ -455,16 +455,16 @@ function bindEvents({
           ui.newPresetName.value = "";
         }
         if (typeof logLine === "function") {
-          logLine("Imported " + importedKeys.length + " prompt preset(s) (" + overwrittenCount + " overwritten).");
+          logLine("已导入 " + importedKeys.length + " 个提示词预设（覆盖了 " + overwrittenCount + " 个）。");
           if (result?.filePath) {
-            logLine("Prompt library imported from:\n" + result.filePath);
+            logLine("已从以下位置导入提示词库：\n" + result.filePath);
           }
         }
       } catch (error) {
         if (typeof logLine === "function") {
-          logLine("Failed to import prompt library: " + (error?.message || String(error)));
+          logLine("导入提示词库失败：" + (error?.message || String(error)));
         }
-        core.showAlert("Failed to import prompt library. Check log for details.");
+        core.showAlert("导入提示词库失败，详情请查看日志。");
       } finally {
         ui.importPromptLibraryButton.disabled = false;
       }
@@ -564,14 +564,14 @@ function bindEvents({
       try {
         const selectionData = app.activeDocument.selection;
         if (!selectionData?.bounds) {
-          core.showAlert("No Selection.");
+          core.showAlert("未建立选区。");
           return;
         }
         const imageBase64 = await selection.getImageDataToBase64(selectionData.bounds);
         state.imageArray.push(imageBase64);
         appendReferencePreview(ui, imageBase64, state.imageArray.length);
       } catch (error) {
-        console.error("Failed to add reference image:", error);
+        console.error("添加参考图失败:", error);
       }
     });
   }
@@ -786,11 +786,11 @@ function bindEvents({
       const key = textfield.value.trim() || pickerMenu.selectedOptions[0]?.name;
       const value = textarea.value;
       if (!value) {
-        core.showAlert("Please input preset value.");
+        core.showAlert("请输入预设内容。");
         return;
       }
       if (!textfield.value.trim()) {
-        core.showAlert("Please input preset name.");
+        core.showAlert("请输入预设名称。");
         return;
       }
 
@@ -890,13 +890,13 @@ function bindEvents({
 
         if (result?.status === "placed") {
           if (typeof logLine === "function") {
-            logLine(`Inserted deferred batch into ${result.entry.docName}.`);
+            logLine(`已将排队批次插入至文档 ${result.entry.docName}。`);
           }
           return;
         }
 
         if (result?.status === "document_mismatch") {
-          const message = `Open ${result.entry.docName} and try again. Current document does not match the original request.`;
+          const message = `请打开文档 ${result.entry.docName} 后重试。当前活动文档与原始生成请求不匹配。`;
           if (typeof logLine === "function") {
             logLine(message);
           }
@@ -905,7 +905,7 @@ function bindEvents({
         }
 
         if (result?.status === "host_modal_state") {
-          const message = "Photoshop is still in modal state. Deferred batch was kept for later insertion.";
+          const message = "Photoshop 当前仍处于模态框状态。排队批次已保留，请稍后重试插入。";
           if (typeof logLine === "function") {
             logLine(message);
           }
@@ -914,7 +914,7 @@ function bindEvents({
         }
 
         if (result?.status === "missing_payload") {
-          const message = "Deferred batch payload is missing and was removed from the queue.";
+          const message = "排队批次数据丢失，已从队列中移除。";
           if (typeof logLine === "function") {
             logLine(message);
           }
@@ -922,9 +922,9 @@ function bindEvents({
         }
       } catch (error) {
         if (typeof logLine === "function") {
-          logLine("Failed to insert deferred batch: " + (error?.message || String(error)));
+          logLine("插入排队批次失败：" + (error?.message || String(error)));
         }
-        core.showAlert("Failed to insert deferred batch. Check log for details.");
+        core.showAlert("插入排队批次失败，详情请查看日志。");
       }
     });
   }

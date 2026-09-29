@@ -15,10 +15,10 @@
   </sp-menu> -->
 
   <sp-action-group id="nav" selects="single">
-    <sp-action-button quiet data-page="main" style="text-decoration: underline;">Image</sp-action-button>
-    <sp-action-button quiet data-page="chat">Chat</sp-action-button>
-    <sp-action-button quiet data-page="settings">Preference</sp-action-button>
-    <sp-action-button quiet data-page="about">About</sp-action-button>
+    <sp-action-button quiet data-page="main" style="text-decoration: underline;">图像</sp-action-button>
+    <sp-action-button quiet data-page="chat">评片对话</sp-action-button>
+    <sp-action-button quiet data-page="settings">偏好设置</sp-action-button>
+    <sp-action-button quiet data-page="about">关于</sp-action-button>
   </sp-action-group>
 
   <sp-div id="pages">
@@ -28,10 +28,10 @@
 
       <!-- MODEL settings -->
       <sp-div>
-        <sp-heading size="xs">Model</sp-heading>
+        <sp-heading size="xs">模型设置</sp-heading>
         <sp-divider size="small"></sp-divider>
         <!-- Select models -->
-        <sp-picker placeholder="Choose a model..." , style="width: 220px">
+        <sp-picker placeholder="选择模型..." , style="width: 220px">
             <sp-menu id="modelPicker" slot="options">
               <sp-menu-item value="doubao-seedream-4-5-251128">SeeDream 4.5</sp-menu-item>
               <sp-menu-item value="doubao-seedream-5-0-260128">SeeDream 5.0</sp-menu-item>
@@ -46,7 +46,7 @@
         </sp-picker>
 
         <!-- Resolution -->
-        <sp-picker id="resolutionPickerArea" placeholder="Choose a resolution..." ,
+        <sp-picker id="resolutionPickerArea" placeholder="选择分辨率..." ,
           style="width: 108px; display: none;">
           <sp-menu id="resolutionPicker" slot="options">
             <sp-menu-item id="1K" value="1K">1K</sp-menu-item>
@@ -57,11 +57,11 @@
         </sp-picker>
 
         <!-- Aspect Ratio -->
-        <sp-picker id="ratioPicker" placehodler="Choose a ratio" , style="width: 110px; display: none;">
+        <sp-picker id="ratioPicker" placeholder="选择宽高比" , style="width: 110px; display: none;">
           <sp-menu id="aspectRatioPicker" slot="options">
             <!-- As nano banana 3 pro and seedream 4.5/5.0 support arbitrary ratio input  -->
             <!-- it is unnecessary to add the ratio parameter to the http request body -->
-            <sp-menu-item value="default" selected>Auto</sp-menu-item>
+            <sp-menu-item value="default" selected>自动</sp-menu-item>
             <sp-menu-item value="1:1">1:1</sp-menu-item>
             <sp-menu-item value="3:4">3:4</sp-menu-item>
             <sp-menu-item value="4:3">4:3</sp-menu-item>
@@ -76,28 +76,28 @@
       <!-- Google Model Specific Settings -->
       <sp-div id="googleModel" width="220px">
         <!-- Temperature -->
-        <sp-checkbox id="lockParam" checked>Lock Parameter</sp-checkbox>
+        <sp-checkbox id="lockParam" checked>锁定参数</sp-checkbox>
         <sp-slider disabled id="temperature" variant="filled" min="0.3" max="1.00" value="1.0" step="0.01">
-          <sp-label slot="label">Temperature</sp-label>
+          <sp-label slot="label">随机度 (Temperature)</sp-label>
         </sp-slider>
 
         <sp-slider disabled id="top_p" variant="filled" min="0.8" max="0.95" value=".9" step="0.01">
-          <sp-label slot="label">top_P</sp-label>
+          <sp-label slot="label">采样概率 (top_P)</sp-label>
         </sp-slider>
 
       </sp-div>
 
       <!-- <sp-divider></sp-divider> -->
-      <sp-heading size="xs">Generate Image</sp-heading>
+      <sp-heading size="xs">生成图像</sp-heading>
       <sp-divider size="small"></sp-divider>
       <!-- input text which should be used as prompt later on -->
 
       <!-- image to be processed preview section -->
       <sp-div id="imagePreview" style="display: none;">
-        <sp-label slot="label">Image Preview
+        <sp-label slot="label">图像预览
           <sp-p id="imageToProcess" class="thumb"
             style="width: 220px; height: 220px; max-width: 300px; max-height: 300px; overflow: auto;"></sp-p>
-          <sp-button id="clear" variant="secondary">Clear</sp-button>
+          <sp-button id="clear" variant="secondary">清除</sp-button>
           <sp-br></sp-br>
       </sp-div>
 
@@ -106,15 +106,15 @@
 
         <!-- SUB-PAGE: PROMPTS MANAGEMENT -->
         <sp-div id="promptManage">
-          <sp-label slot="label">Prompt Preset</sp-label><br>
-          <sp-picker placeholder="Choose a preset..." , style="width: 175px">
+          <sp-label slot="label">提示词预设</sp-label><br>
+          <sp-picker placeholder="选择预设..." , style="width: 175px">
             <sp-menu id="promptPicker" slot="options">
             </sp-menu>
           </sp-picker>
 
           <!-- <sp-button variant="warning" style="height: 5px;">delete</sp-button> -->
 
-          <sp-action-button id="editPromptButton" title="Create a new preset">
+          <sp-action-button id="editPromptButton" title="新建预设">
             <svg viewBox="0 0 36 36" style="width: 18px; height: 18px;" fill="gray">
               <path
                 d="M33.567 8.2L27.8 2.432a1.215 1.215 0 0 0-.866-.353H26.9a1.371 1.371 0 0 0-.927.406L5.084 23.372a.99.99 0 0 0-.251.422L2.055 33.1c-.114.377.459.851.783.851a.251.251 0 0 0 .062-.007c.276-.063 7.866-2.344 9.311-2.778a.972.972 0 0 0 .414-.249l20.888-20.889a1.372 1.372 0 0 0 .4-.883 1.221 1.221 0 0 0-.346-.945zM11.4 29.316c-2.161.649-4.862 1.465-6.729 2.022l2.009-6.73z" />
@@ -127,16 +127,16 @@
           <div id="newPresetTextDiv" style="display: none;">
 
             <div id="promptPresetDiv" class="main">
-              <sp-label slot="labels">Prompt Name</sp-label>
+              <sp-label slot="labels">预设名称</sp-label>
               <sp-textfield id="newPresetName" width="220px">
               </sp-textfield>
 
-              <sp-label slot="labels">Prompt Content</sp-label>
+              <sp-label slot="labels">预设内容</sp-label>
               <sp-textarea id="promptPresetTextarea" style="width: 220px;"
-                placeholder="Select a prompt preset..."></sp-textarea>
+                placeholder="选择提示词预设..."></sp-textarea>
               <div class="right">
-                <sp-button id="deletePromptButton" variant="warning">Delete</sp-button>
-                <sp-button id="savePromptPreset">Save</sp-button>
+                <sp-button id="deletePromptButton" variant="warning">删除</sp-button>
+                <sp-button id="savePromptPreset">保存</sp-button>
               </div>
             </div>
 
@@ -145,9 +145,9 @@
         </sp-div>
 
 
-        <sp-textarea id="promptInput" placeholder="Enter your prompt here"
+        <sp-textarea id="promptInput" placeholder="在此输入提示词..."
           style="resize: vertical; overflow: auto; width: 220px" height="220px">
-          <sp-label slot="label">Prompt</sp-label>
+          <sp-label slot="label">提示词</sp-label>
         </sp-textarea>
 
         <!-- TODO: add color difference explanation -->
@@ -159,11 +159,11 @@
           <sp-div id="batchCountControl" style="display: none;">
             <sp-slider id="batchCountSlider" variant="filled" min="1" max="8" value="1" step="1"
               style="width: 219px;">
-              <sp-label slot="label">Batch Count</sp-label>
+              <sp-label slot="label">批量生成数量</sp-label>
             </sp-slider>
           </sp-div>
-          <!-- <sp-button class="shortBtn" variant="secondary" id="loadPrompt">Load</sp-button> -->
-          <sp-button class="shortBtn" id="generate">Generate</sp-button>
+          <!-- <sp-button class="shortBtn" variant="secondary" id="loadPrompt">加载</sp-button> -->
+          <sp-button class="shortBtn" id="generate">生成</sp-button>
           <div id="deferredBatchList" style="display: none;"></div>
         </div>
         <sp-label id="jobCount" style="display: none;"></sp-label>
@@ -171,9 +171,9 @@
 
       <div width="220px">
         <sp-div id="referenceImage" style="display: none;">
-          <sp-heading size="xs">Reference Image</sp-heading>
+          <sp-heading size="xs">参考图</sp-heading>
           <sp-div id="refImagePreviewDiv" style="display: none;">
-            <sp-label id='refCount' slot="label">Reference Image Preview </sp-label>
+            <sp-label id='refCount' slot="label">参考图预览 </sp-label>
 
             <sp-p id="refImagePreview" class="thumb" style="
       display: flex;
@@ -187,87 +187,86 @@
             </sp-p>
           </sp-div>
 
-          <sp-button id="reference" class="longBtn" variant="secondary" id="reference">Set as Reference</sp-button><br>
-          <sp-button id="clearReference" class="longBtn" variant="warning" id="reference">Clear Reference
-            Images</sp-button><br>
+          <sp-button id="reference" class="longBtn" variant="secondary">设为参考图</sp-button><br>
+          <sp-button id="clearReference" class="longBtn" variant="warning">清除参考图</sp-button><br>
 
         </sp-div>
       </div>
 
 
       <!-- LOG -->
-      <sp-heading size="xs" class="logArea">Log</sp-heading>
+      <sp-heading size="xs" class="logArea">日志</sp-heading>
       <sp-divider size="small"></sp-divider>
-      <sp-textarea class="log logArea" id="log" height="200px" placeholder="Logging information">
-        <sp-label slot="label">Logging information</sp-label></sp-textarea>
+      <sp-textarea class="log logArea" id="log" height="200px" placeholder="日志信息...">
+        <sp-label slot="label">日志信息</sp-label></sp-textarea>
       <sp-br></sp-br>
-      <sp-button class="logArea" id="clearLog" variant="secondary">clear</sp-button>
+      <sp-button class="logArea" id="clearLog" variant="secondary">清空日志</sp-button>
 
     </sp-div>
 
     <!-- PAGE: CHAT -->
     <sp-div id="chat" data-page hidden>
-      <sp-heading size="xs">Chat Critique</sp-heading>
+      <sp-heading size="xs">AI 评片对话</sp-heading>
       <sp-divider size="small"></sp-divider>
 
       <sp-div id="chatImagePreview" style="display: none;">
-        <sp-label slot="label">Image Preview
+        <sp-label slot="label">图像预览
           <sp-p id="chatImageToProcess" class="thumb"
             style="width: 220px; height: 220px; max-width: 300px; max-height: 300px; overflow: auto;"></sp-p>
         </sp-label>
       </sp-div>
 
-      <sp-textarea id="chatPromptInput" placeholder="Enter your prompt here"
+      <sp-textarea id="chatPromptInput" placeholder="在此输入提示词/点评需求..."
         style="resize: vertical; overflow: auto; width: 220px" height="220px">
-        <sp-label slot="label">Prompt</sp-label>
+        <sp-label slot="label">提示词</sp-label>
       </sp-textarea>
 
       <sp-br></sp-br>
-      <sp-button class="shortBtn" id="critique">Critique</sp-button>
+      <sp-button class="shortBtn" id="critique">开始评片</sp-button>
       <sp-br></sp-br>
 
-      <sp-textarea id="chatOutput" placeholder="Streaming critique output will appear here"
+      <sp-textarea id="chatOutput" placeholder="流式输出评片结果将显示在此..."
         style="resize: vertical; overflow: auto; width: 220px" height="220px">
-        <sp-label slot="label">Critique Output</sp-label>
+        <sp-label slot="label">评片结果</sp-label>
       </sp-textarea>
     </sp-div>
 
     <!-- PAGE: SETTINGS -->
     <sp-div id="settings" data-page hidden>
       <!-- <sp-heading size="S">Developer</sp-heading> -->
-      <sp-field-group label="settings">
+      <sp-field-group label="偏好设置">
 
-        <sp-label>Generation</sp-label><br>
+        <sp-label>生成设置</sp-label><br>
         <sp-slider id="maxWaitingTimeSlider" variant="filled" min="1" max="300" value="120" step="1"
           style="width: 200px;">
-          <sp-label slot="label">Maximum Waiting Time (s)</sp-label>
+          <sp-label slot="label">最长等待时间 (秒)</sp-label>
         </sp-slider>
         <sp-slider id="maxBatchCountSlider" variant="filled" min="1" max="16" value="8" step="1"
           style="width: 200px;">
-          <sp-label slot="label">Maximum Batch Count</sp-label>
+          <sp-label slot="label">最大批量生成数量</sp-label>
         </sp-slider>
-        <sp-checkbox id="enableGeneratedGroupColorLabel">Color Generated Batch Group</sp-checkbox><br>
-        <sp-picker id="generatedGroupColorLabel" placeholder="Choose color label..." style="width: 200px;">
+        <sp-checkbox id="enableGeneratedGroupColorLabel">为生成的批次图层组标记颜色</sp-checkbox><br>
+        <sp-picker id="generatedGroupColorLabel" placeholder="选择颜色标记..." style="width: 200px;">
           <sp-menu slot="options">
-            <sp-menu-item value="blue" selected>Blue</sp-menu-item>
-            <sp-menu-item value="red">Red</sp-menu-item>
-            <sp-menu-item value="orange">Orange</sp-menu-item>
-            <sp-menu-item value="yellow">Yellow</sp-menu-item>
-            <sp-menu-item value="green">Green</sp-menu-item>
-            <sp-menu-item value="violet">Violet</sp-menu-item>
-            <sp-menu-item value="gray">Gray</sp-menu-item>
+            <sp-menu-item value="blue" selected>蓝色</sp-menu-item>
+            <sp-menu-item value="red">红色</sp-menu-item>
+            <sp-menu-item value="orange">橙色</sp-menu-item>
+            <sp-menu-item value="yellow">黄色</sp-menu-item>
+            <sp-menu-item value="green">绿色</sp-menu-item>
+            <sp-menu-item value="violet">紫色</sp-menu-item>
+            <sp-menu-item value="gray">灰色</sp-menu-item>
           </sp-menu>
         </sp-picker>
         <br>
-        <sp-checkbox id="enableBatchGeneration">Enable Batch Generate</sp-checkbox><br>
-        <sp-checkbox id="enableTextToImage">Enable Text to Image Generation</sp-checkbox><br>
-        <sp-checkbox id="referenceImageSetting">Enable Reference Image</sp-checkbox><br>
-        <sp-checkbox id="persistGeneratedImages">Save Generated Images Persistently</sp-checkbox><br>
-        <sp-button id="openImageFolder" class="shortBtn" variant="secondary">Open Image Folder</sp-button><br>
-        <sp-checkbox id="enableDeferredBatchRecovery">Queue Batch Results For Manual Insert</sp-checkbox><br>
-        <sp-checkbox id="enableCritiquePromptEdit">Enable Critique Prompt Edit</sp-checkbox><br>
-        <sp-picker id="googleApiBackend" placeholder="Choose Google API backend..." style="width: 200px;">
-          <sp-label slot="label">Google API Backend</sp-label>
+        <sp-checkbox id="enableBatchGeneration">启用批量生成</sp-checkbox><br>
+        <sp-checkbox id="enableTextToImage">启用文生图模式 (无需选区)</sp-checkbox><br>
+        <sp-checkbox id="referenceImageSetting">启用参考图功能</sp-checkbox><br>
+        <sp-checkbox id="persistGeneratedImages">持久化保存生成的图像</sp-checkbox><br>
+        <sp-button id="openImageFolder" class="shortBtn" variant="secondary">打开图像文件夹</sp-button><br>
+        <sp-checkbox id="enableDeferredBatchRecovery">排队批次结果以便手动插入</sp-checkbox><br>
+        <sp-checkbox id="enableCritiquePromptEdit">允许编辑评片提示词</sp-checkbox><br>
+        <sp-picker id="googleApiBackend" placeholder="选择 Google API 后端..." style="width: 200px;">
+          <sp-label slot="label">Google API 后端</sp-label>
           <sp-menu slot="options">
             <sp-menu-item value="google-ai-studio">Google AI Studio</sp-menu-item>
             <sp-menu-item value="vertex-ai">Google Vertex AI</sp-menu-item>
@@ -276,38 +275,38 @@
         <br>
         <br>
 
-        <sp-label>Export Prompt Library</sp-label><br>
-        <sp-button id="exportPromptLibrary" class="shortBtn" variant="secondary">Export</sp-button><br>
-        <sp-label>Import Prompt Library</sp-label><br>
-        <sp-button id="importPromptLibrary" class="shortBtn" variant="secondary">Import</sp-button><br>
+        <sp-label>导出提示词库</sp-label><br>
+        <sp-button id="exportPromptLibrary" class="shortBtn" variant="secondary">导出</sp-button><br>
+        <sp-label>导入提示词库</sp-label><br>
+        <sp-button id="importPromptLibrary" class="shortBtn" variant="secondary">导入</sp-button><br>
         <br>
 
-        <sp-label>Interface</sp-label><br>
-        <sp-checkbox id="showChatTab" checked>Show Chat Tab</sp-checkbox><br>
-        <sp-checkbox id="enablePrompt" checked>Enable Customised Prompt</sp-checkbox><br>
-        <sp-checkbox id="hidePromptPreset">Hide Prompt Preset</sp-checkbox><br>
-        <sp-checkbox id="previewImage">Preview Image</sp-checkbox><br>
-        <sp-checkbox id="hideLog">Hide Log</sp-checkbox><br>
+        <sp-label>界面设置</sp-label><br>
+        <sp-checkbox id="showChatTab" checked>显示 AI 评片标签页</sp-checkbox><br>
+        <sp-checkbox id="enablePrompt" checked>启用自定义提示词</sp-checkbox><br>
+        <sp-checkbox id="hidePromptPreset">隐藏提示词预设</sp-checkbox><br>
+        <sp-checkbox id="previewImage">预览选区图像</sp-checkbox><br>
+        <sp-checkbox id="hideLog">隐藏日志区域</sp-checkbox><br>
         <br>
 
-        <sp-label>Model and Processing</sp-label><br>
-        <sp-checkbox id="showModelParameter">Show Model Parameter</sp-checkbox><br>
-        <sp-checkbox id="adaptiveRatioSetting">Disable Adaptive Ratio</sp-checkbox><br>
-        <sp-checkbox id="adaptiveResolutionSetting">Disable Adaptive Resolution</sp-checkbox><br>
+        <sp-label>模型与处理设置</sp-label><br>
+        <sp-checkbox id="showModelParameter">显示高级模型参数</sp-checkbox><br>
+        <sp-checkbox id="adaptiveRatioSetting">禁用自适应比例</sp-checkbox><br>
+        <sp-checkbox id="adaptiveResolutionSetting">禁用自适应分辨率</sp-checkbox><br>
         <sp-slider id="upgradeFactorSlider" variant="filled" min="1.0" max="2.0" value="1.5" step="0.1"
           style="width: 200px;">
-          <sp-label slot="label">Upgrade Factor</sp-label>
+          <sp-label slot="label">放大倍率 (Upgrade Factor)</sp-label>
         </sp-slider>
         <br>
-        <sp-checkbox id="allow4KGeneration">Allow 4K Generation</sp-checkbox><br>
-        <sp-checkbox id="skipMask">Skip Layer Mask</sp-checkbox><br>
-        <sp-checkbox id="test">Test Mode</sp-checkbox><br>
-        <sp-checkbox id="allowNSFW" style="display: none;" checked>Allow NSFW</sp-checkbox><br>
+        <sp-checkbox id="allow4KGeneration">允许生成 4K 分辨率</sp-checkbox><br>
+        <sp-checkbox id="skipMask">跳过图层蒙版</sp-checkbox><br>
+        <sp-checkbox id="test">测试模式</sp-checkbox><br>
+        <sp-checkbox id="allowNSFW" style="display: none;" checked>允许 NSFW</sp-checkbox><br>
 
       </sp-field-group>
 
       <!-- perhaps change to type="password" -->
-      <sp-heading size="xxs">API Key</sp-heading>
+      <sp-heading size="xxs">API 密钥设置</sp-heading>
       <sp-textfield id="api-key-google-ai-studio" name="google-ai-studio-api-key" placeholder="****************" style="width: 220px;">
         <sp-label slot="label">Google AI Studio</sp-label>
       </sp-textfield>
@@ -317,76 +316,67 @@
       </sp-textfield>
       <br>
       <sp-textfield id="api-key-bytedance" name="bytedance-api-key" placeholder="****************" style="width: 220px;">
-        <sp-label slot="label">Bytedance</sp-label>
+        <sp-label slot="label">字节跳动 / 火山引擎</sp-label>
       </sp-textfield>
       <br>
       <sp-textfield id="api-key-xai" name="xai-api-key" placeholder="****************" style="width: 220px;">
         <sp-label slot="label">xAI</sp-label>
       </sp-textfield>
       <br>
-      <sp-checkbox id="showKey">Show API Key in Plaintext</sp-checkbox><br>
+      <sp-checkbox id="showKey">以明文显示 API 密钥</sp-checkbox><br>
 
-      <sp-button class="shortBtn" id="update-api-key">Update</sp-button>
+      <sp-button class="shortBtn" id="update-api-key">更新密钥</sp-button>
 
     </sp-div>
 
     <!-- PAGE: ABOUT -->
     <sp-div id="about" data-page hidden>
       <sp-label>
-        <sp-heading size="xs">Discuss</sp-heading>
+        <sp-heading size="xs">讨论与反馈</sp-heading>
 
-        Report a bug or issue on <sp-link variant="secondary"
-          href="https://github.com/deewong7/Ai-Assisted-Image-Editing-for-Photoshop">Github</sp-link>.
+        在 <sp-link variant="secondary"
+          href="https://github.com/deewong7/Ai-Assisted-Image-Editing-for-Photoshop">Github</sp-link> 上报告问题或提交 Issue。
 
         <br>
 
-        Discuss more in Douyin group chat <sp-link variant="secondary"
-          href="https://v.douyin.com/tWFPY5X2i_o/">here</sp-link>.
+        加入抖音群聊参与更多讨论：<sp-link variant="secondary"
+          href="https://v.douyin.com/tWFPY5X2i_o/">点击此处</sp-link>。
 
       </sp-label>
 
 
-      <sp-heading size="xs">Developer Reference</sp-heading>
+      <sp-heading size="xs">开发者参考资料</sp-heading>
       <sp-link variant="secondary" href="https://developer.adobe.com/photoshop/uxp/2022/ps_reference/">Photoshop
         API</sp-link><br>
       <sp-link variant="secondary" href="https://developer.adobe.com/photoshop/uxp/2022/ps_reference/">UXP
         API</sp-link><br>
-      <sp-link variant="secondary" href="https://artificialanalysis.ai/image/leaderboard/editing">Model Editing
-        Leaderboard</sp-link><br>
+      <sp-link variant="secondary" href="https://artificialanalysis.ai/image/leaderboard/editing">图像编辑模型排行榜</sp-link><br>
 
-      <sp-heading size="xs">Copyright</sp-heading>
+      <sp-heading size="xs">版权与许可</sp-heading>
       <sp-label>
-        Blendrr<br>
-        Version 0.3.7-alpha<br>
+        Blendrr 插件<br>
+        版本 0.3.7-alpha<br>
 
         © 2026 dw<br>
-        License: GPL-3.0<br>
+        开源许可：GPL-3.0<br>
         <br>
-        Developed by dw
+        开发者：dw
         <br>
         <br>
 
-        Free to use.
+        免费使用。
 
-        If this plugin helps you,<br>
-        consider supporting its development.<br>
-        It would feed a cat who supervises <br> most of the coding.<br>
+        如果这个插件对您有所帮助，<br>
+        欢迎考虑支持本项目的后续开发。<br>
+        您的支持将用来给监督代码编写的监工小猫买罐头。<br>
 
         <br>
-        This plugin is not affiliated with or endorsed <br>by Adobe Inc.<br>
-        Adobe and Photoshop are trademarks of<br>Adobe Inc.
+        本插件与 Adobe Inc. 无关，亦未获得其官方赞助或背书。<br>
+        Adobe 及 Photoshop 是 Adobe Inc. 的注册商标。
       </sp-label>
 
     </sp-div>
   </sp-div>
-
-  <!-- <sp-menu label="Selection type"> -->
-  <!-- <sp-menu-item id="menu"> Menu </sp-menu-item> -->
-  <!-- <sp-menu-divider></sp-menu-divider> -->
-  <!-- <sp-menu-item id="mainMenu" style="display: none;"> Main </sp-menu-item> -->
-  <!-- <sp-menu-item id="settingMenu" style="display: none;"> Settings </sp-menu-item> -->
-  <!-- <sp-menu-item disabled> Other </sp-menu-item> -->
-  <!-- </sp-menu> -->
 
 </body>
 

@@ -251,7 +251,7 @@ function createGenerator({
   }
 
   function createRunSummaryMessage(total, successCount, elapsedSeconds, targetModel, cancelled = false) {
-    if (cancelled && successCount === 0) {
+    if (cancelled) {
       return total <= 1
         ? `Job canceled after ${elapsedSeconds} seconds - ${targetModel}`
         : `Batch canceled after ${elapsedSeconds} seconds - ${targetModel}`
@@ -392,7 +392,7 @@ function createGenerator({
     const requestDocument = getDocumentSnapshot(app.activeDocument)
     const selectionData = app.activeDocument.selection
     if (!selectionData?.bounds) {
-      core.showAlert("No Selection.")
+      core.showAlert("未建立选区。")
       return
     }
 
@@ -421,7 +421,7 @@ function createGenerator({
 
     const prompt = ui.promptInput?.value.trim()
     if (prompt === "") {
-      core.showAlert("Please input prompt.")
+      core.showAlert("请输入提示词。")
       return
     }
 
@@ -594,11 +594,10 @@ function createGenerator({
 
       if (runState.cancelRequested) {
         if (generatedImages.length > 0 && typeof logLine === "function") {
-          logLine(`Keeping ${generatedImages.length} finished image(s); aborted unfinished requests.`)
+          logLine(`Canceled run discarded ${generatedImages.length} generated image(s).`)
         }
-        if (generatedImages.length === 0) {
-          return
-        }
+        generatedImages = []
+        return
       }
 
       if (generatedImages.length === 0) {
@@ -652,9 +651,9 @@ function createGenerator({
         )
         if (!deferred) {
           if (typeof logLine === "function") {
-            logLine(message + " Placement skipped.")
+            logLine(message + " 已跳过图层插入。")
           }
-          core.showAlert("Generated batch finished, but the active document changed. Placement skipped.")
+          core.showAlert("批次生成已完成，但当前活动文档已变更，已跳过图层插入。")
         }
         return
       }
@@ -731,7 +730,7 @@ function createGenerator({
     const targetModel = state.selectedModel;
     const expectedModel = nanoBananaModelId || "gemini-3-pro-image";
     if (targetModel !== expectedModel) {
-      const message = "Chat critique currently supports Nano Banana Pro only.";
+      const message = "评片对话功能目前仅支持 Nano Banana Pro 模型。";
       core.showAlert(message);
       if (typeof logLine === "function") {
         logLine(message);
@@ -742,7 +741,7 @@ function createGenerator({
     const promptValue = ui.chatPromptInput ? ui.chatPromptInput.value : ui.promptInput?.value;
     const prompt = (promptValue || "").trim();
     if (prompt === "") {
-      core.showAlert("Please input prompt.");
+      core.showAlert("请输入提示词。");
       return;
     }
 
@@ -755,7 +754,7 @@ function createGenerator({
     }
 
     if (!isValidBounds(bounds)) {
-      const message = "Failed to resolve valid bounds from current document.";
+      const message = "无法从当前文档获取有效的画面区域。";
       core.showAlert(message);
       if (typeof logLine === "function") {
         logLine(message);
@@ -768,13 +767,13 @@ function createGenerator({
       base64Data = await selection.getImageDataToBase64(bounds);
     } catch (error) {
       if (typeof logLine === "function") {
-        logLine("Failed to capture image for critique: " + error.message);
+        logLine("捕获评片图像失败：" + error.message);
       }
     }
 
     if (!base64Data) {
       if (typeof logLine === "function") {
-        logLine("No base64 data obtained for critique. Aborting.");
+        logLine("未能获取评片所需的图像数据，已中止。");
       }
       return;
     }
@@ -805,9 +804,9 @@ function createGenerator({
       }
     } catch (error) {
       if (typeof logLine === "function") {
-        logLine("Error during critique streaming: " + error.message);
+        logLine("评片结果流式传输错误：" + error.message);
       }
-      core.showAlert("Critique failed. Check log for details.");
+      core.showAlert("AI 评片失败，详情请查看日志。");
     } finally {
       if (ui.critiqueButton) {
         ui.critiqueButton.disabled = false;
