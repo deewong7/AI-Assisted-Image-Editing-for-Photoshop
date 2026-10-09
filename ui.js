@@ -212,7 +212,8 @@ function renderModelUI(ui, state, models, logLine) {
   if (ui.googleModel) {
     ui.googleModel.style.display =
       (state.selectedModel === models.NANOBANANA_PRO ||
-        state.selectedModel === models.NANOBANANA_2) && state.showModelParameters ? "" : "none";
+        state.selectedModel === models.NANOBANANA_2 ||
+        state.selectedModel === models.NANOBANANA_2_1) && state.showModelParameters ? "" : "none";
   }
 
   if (state.selectedModel === models.GROK_IMAGINE ||

@@ -1,7 +1,8 @@
 const supportedModels = [
   "gemini-3-pro-image",
   "gemini-3.1-flash-image",
-  "gemini-3.1-flash-image-preview"
+  "gemini-3.1-flash-image-preview",
+  "gemini-nano-banana-2.1"
 ];
 const VERTEX_API_ENDPOINT = "https://aiplatform.googleapis.com";
 const AI_STUDIO_API_ENDPOINT = "https://generativelanguage.googleapis.com";
@@ -395,7 +396,7 @@ async function generateImage(options) {
         logLine("JSON object finished parsing.");
       }
       const candidate = json.candidates?.[0];
-      const imagePart = candidate?.content?.parts?.find(part => part?.inlineData?.data);
+      const imagePart = candidate?.content?.parts?.find(part => part?.inlineData?.data && part.thought !== true);
       const responseData = imagePart?.inlineData;
       if (responseData?.data) {
         return responseData.data;

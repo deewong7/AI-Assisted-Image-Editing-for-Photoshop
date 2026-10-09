@@ -135,6 +135,50 @@ test.describe("generateImage (google)", () => {
     assert.equal(body.generationConfig.imageConfig.imageSize, "2K");
   });
 
+  test("supports Nano Banana 2.1 and skips thought images", async (t) => {
+    const originalFetch = global.fetch;
+    let lastCall;
+    global.fetch = async (url, options) => {
+      lastCall = { url, options };
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  { thought: true, inlineData: { data: "THOUGHT_SKETCH" } },
+                  { inlineData: { data: "NB21_FINAL" } }
+                ]
+              }
+            }
+          ]
+        })
+      };
+    };
+    t.after(() => {
+      global.fetch = originalFetch;
+    });
+
+    const result = await generateImage({
+      prompt: "hello",
+      base64Image: "BASE",
+      apiKey: { "GoogleAIStudio-api-key": "AIza_TEST_KEY" },
+      resolution: "2K",
+      modelId: "gemini-nano-banana-2.1"
+    });
+
+    assert.equal(result, "NB21_FINAL");
+    assert.equal(
+      lastCall.url,
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-nano-banana-2.1:generateContent"
+    );
+    assert.equal(lastCall.options.headers["x-goog-api-key"], "AIza_TEST_KEY");
+    const body = JSON.parse(lastCall.options.body);
+    assert.equal(body.generationConfig.imageConfig.imageSize, "2K");
+    assert.equal(body.generationConfig.thinkingConfig, undefined);
+  });
+
   test("returns undefined for short prompt", async (t) => {
     let called = false;
     const originalFetch = global.fetch;

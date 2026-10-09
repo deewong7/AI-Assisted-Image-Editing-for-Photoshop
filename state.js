@@ -3,6 +3,7 @@ const SEEDREAM_5 = "doubao-seedream-5-0-260128";
 const SEEDREAM_5_PRO = "doubao-seedream-5-0-pro-260628";
 const NANOBANANA_PRO = "gemini-3-pro-image";
 const NANOBANANA_2 = "gemini-3.1-flash-image";
+const NANOBANANA_2_1 = "gemini-nano-banana-2.1";
 const GROK_IMAGINE = "grok-imagine-image";
 const GROK_IMAGINE_2 = "grok-imagine-image-2.0";
 const { DEFAULT_MAX_BATCH_COUNT, clampMaxBatchCount, clampBatchCount } = require("./limits");
@@ -195,6 +196,7 @@ module.exports = {
   SEEDREAM_5_PRO,
   NANOBANANA_PRO,
   NANOBANANA_2,
+  NANOBANANA_2_1,
   GROK_IMAGINE,
   GROK_IMAGINE_2,
   DEFAULT_API_KEYS,
