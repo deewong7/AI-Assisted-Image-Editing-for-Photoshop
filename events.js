@@ -4,7 +4,8 @@ const {
   clearImagePreview,
   appendReferencePreview,
   clearReferencePreview,
-  renderDeferredBatchPlacements
+  renderDeferredBatchPlacements,
+  renderJobCount
 } = require("./ui");
 const { DEFAULT_MAX_BATCH_COUNT, clampMaxBatchCount, clampBatchCount } = require("./limits");
 const { normalizeGroupColorLabel } = require("./group-color-labels");
@@ -682,6 +683,9 @@ function bindEvents({
     ui.enableBatchGeneration.addEventListener("click", (e) => {
       state.enableBatchGeneration = e.target.checked;
       applyBatchGenerationState(ui, state);
+      if (state.enableBatchGeneration !== true) {
+        renderJobCount(ui, 0);
+      }
       savePluginPrefsState(storage, state);
     });
   }

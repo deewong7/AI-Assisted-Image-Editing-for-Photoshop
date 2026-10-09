@@ -537,7 +537,8 @@ test.describe("batch generation preference", () => {
       enableCritiquePromptEdit: createCheckbox(false),
       enableBatchGeneration: createCheckbox(true),
       batchCountControl: { style: { display: "" } },
-      batchCountSlider: createBatchSlider("4")
+      batchCountSlider: createBatchSlider("4"),
+      jobCount: { style: { display: "" }, textContent: "Current Jobs: 1" }
     };
     const args = createBaseArgs(ui);
     args.state.enableBatchGeneration = true;
@@ -557,6 +558,8 @@ test.describe("batch generation preference", () => {
     assert.equal(args.state.batchCount, 1);
     assert.equal(ui.batchCountControl.style.display, "none");
     assert.equal(ui.batchCountSlider.value, "1");
+    assert.equal(ui.jobCount.style.display, "none");
+    assert.equal(ui.jobCount.textContent, "");
     assert.deepEqual(savedPrefs, [createSavedPrefs()]);
   });
 });

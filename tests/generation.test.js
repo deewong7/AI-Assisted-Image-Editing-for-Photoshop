@@ -173,6 +173,86 @@ test.describe("createGenerator", () => {
     assert.equal(logs.some(line => line.includes("Generating image at 2K with grok-imagine-image via ")), false);
   });
 
+  test("hides the job line when batch generation is disabled", async () => {
+    const pending = createDeferred();
+    const ui = {
+      testCheckbox: { checked: false },
+      promptInput: { value: "test prompt" },
+      generateButton: { disabled: false, innerText: "Generate" },
+      allowNSFW: { checked: false },
+      temperature: { value: "1.0" },
+      topP: { value: "0.90" },
+      imageToProcess: {},
+      jobCount: { style: { display: "" }, textContent: "Current Jobs: 1" }
+    };
+
+    const generator = createGenerator({
+      app: {
+        activeDocument: {
+          selection: {
+            bounds: {
+              left: 0,
+              right: 100,
+              top: 0,
+              bottom: 100,
+              width: 100,
+              height: 100
+            }
+          }
+        }
+      },
+      core: {
+        showAlert: () => {}
+      },
+      ui,
+      state: {
+        selectedModel: "gemini-3-pro-image",
+        aspectRatio: "1:1",
+        enableBatchGeneration: false,
+        batchCount: 1,
+        textToImage: false,
+        imageArray: [],
+        skipMask: false,
+        persistGeneratedImages: false,
+        showModelParameters: false,
+        apiKey: { "GoogleAIStudio-api-key": "KEY" },
+        resolution: "2K",
+        adaptiveResolutionSetting: false,
+        currentJobCount: 0
+      },
+      selection: {
+        async getImageDataToBase64() {
+          return "selection-b64";
+        }
+      },
+      placer: {
+        async placeToCurrentDocAtSelection() {}
+      },
+      generateWithProvider: async () => pending.promise,
+      critiqueWithProvider: async function* () {},
+      logLine: () => {},
+      utils: {
+        pickTier: () => "2K"
+      },
+      seedreamModelId: ["seedream"],
+      grokModelId: "grok-imagine-image",
+      nanoBananaModelId: "gemini-3-pro-image"
+    });
+
+    const runPromise = generator.generate();
+    await flushAsyncWork();
+
+    assert.equal(ui.generateButton.innerText, "Generating...");
+    assert.equal(ui.jobCount.style.display, "none");
+    assert.equal(ui.jobCount.textContent, "");
+
+    pending.resolve("generated-b64");
+    await runPromise;
+
+    assert.equal(ui.jobCount.style.display, "none");
+    assert.equal(ui.jobCount.textContent, "");
+  });
+
   test("uses 3K adaptive resolution for SeeDream 5", async () => {
     let providerCall;
     let pickTierOptions;

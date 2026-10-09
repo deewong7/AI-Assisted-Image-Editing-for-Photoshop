@@ -108,6 +108,18 @@ function createGenerator({
     return error
   }
 
+  function renderGenerateStatus(completed, total) {
+    if (state.enableBatchGeneration !== true) {
+      renderJobCount(ui, 0)
+      return
+    }
+    if (total > 1) {
+      renderBatchProgress(ui, completed, total)
+      return
+    }
+    renderJobCount(ui, state.currentJobCount)
+  }
+
   function setGenerateButtonIdle() {
     if (!ui.generateButton) {
       return
@@ -487,11 +499,7 @@ function createGenerator({
       scheduleGenerateTimeout(runState)
 
       state.currentJobCount = Math.max(0, (state.currentJobCount || 0) + 1)
-      if (targetBatchCount > 1) {
-        renderBatchProgress(ui, 0, targetBatchCount)
-      } else {
-        renderJobCount(ui, state.currentJobCount)
-      }
+      renderGenerateStatus(0, targetBatchCount)
       jobCountIncremented = true
 
       if (shouldFetchBase64) {
@@ -529,12 +537,12 @@ function createGenerator({
       if (targetBatchCount > 1) {
         let completedCount = 0
         setGenerateButtonProgress(0, targetBatchCount, runState)
-        renderBatchProgress(ui, 0, targetBatchCount)
+        renderGenerateStatus(0, targetBatchCount)
 
         const handleTaskSettled = () => {
           completedCount += 1
           setGenerateButtonProgress(completedCount, targetBatchCount, runState)
-          renderBatchProgress(ui, completedCount, targetBatchCount)
+          renderGenerateStatus(completedCount, targetBatchCount)
         }
 
         const batchTasks = []
