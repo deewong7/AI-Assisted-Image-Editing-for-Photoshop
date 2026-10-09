@@ -7,6 +7,7 @@ const GROK_IMAGINE = "grok-imagine-image";
 const GROK_IMAGINE_2 = "grok-imagine-image-2.0";
 const { DEFAULT_MAX_BATCH_COUNT, clampMaxBatchCount, clampBatchCount } = require("./limits");
 const { DEFAULT_GROUP_COLOR_LABEL, normalizeGroupColorLabel } = require("./group-color-labels");
+const { DEFAULT_PROFILE_NAME } = require("./api-key-profiles");
 
 const DEFAULT_API_KEYS = Object.freeze({
   "NanoBananaPro-api-key": "",
@@ -113,7 +114,37 @@ Top3Strengths=用1,2,3逗号分隔
 Top3Issues=用1,2,3逗号分隔
 NextShotPlan=下一次拍摄三步方案，用1,2,3逗号分隔`;
 
-function createState({ ui, apiKey, promptPresets, pluginPrefs, pendingBatchPlacements } = {}) {
+function resolveApiKeyState(apiKeyStore, apiKey) {
+  const profilesAreValid = apiKeyStore
+    && apiKeyStore.profiles
+    && typeof apiKeyStore.profiles === "object"
+    && !Array.isArray(apiKeyStore.profiles);
+
+  if (profilesAreValid) {
+    const profiles = apiKeyStore.profiles;
+    if (!Object.prototype.hasOwnProperty.call(profiles, DEFAULT_PROFILE_NAME)) {
+      profiles[DEFAULT_PROFILE_NAME] = { ...(apiKey || DEFAULT_API_KEYS) };
+    }
+    const requested = typeof apiKeyStore.activeProfile === "string" ? apiKeyStore.activeProfile : "";
+    const activeApiKeyProfile = Object.prototype.hasOwnProperty.call(profiles, requested)
+      ? requested
+      : DEFAULT_PROFILE_NAME;
+    return {
+      apiKey: profiles[activeApiKeyProfile],
+      apiKeyProfiles: profiles,
+      activeApiKeyProfile
+    };
+  }
+
+  const keys = { ...(apiKey || DEFAULT_API_KEYS) };
+  return {
+    apiKey: keys,
+    apiKeyProfiles: { [DEFAULT_PROFILE_NAME]: keys },
+    activeApiKeyProfile: DEFAULT_PROFILE_NAME
+  };
+}
+
+function createState({ ui, apiKey, apiKeyStore, promptPresets, pluginPrefs, pendingBatchPlacements } = {}) {
   const modelValue = ui?.modelPicker?.value ?? NANOBANANA_PRO;
   const resolutionValue = ui?.resolutionPicker?.value ?? "2K";
   const aspectRatioValue = ui?.aspectRatioPicker?.value ?? "default";
@@ -122,6 +153,7 @@ function createState({ ui, apiKey, promptPresets, pluginPrefs, pendingBatchPlace
   const maxBatchCount = clampMaxBatchCount(prefs.maxBatchCount);
   const initialBatchCountInput = ui?.batchCountSlider?.value ?? ui?.batchCountPicker?.value;
   const groupColorLabel = normalizeGroupColorLabel(prefs.generatedGroupColorLabel);
+  const apiKeys = resolveApiKeyState(apiKeyStore, apiKey);
 
   return {
     selectedModel: modelValue,
@@ -150,7 +182,9 @@ function createState({ ui, apiKey, promptPresets, pluginPrefs, pendingBatchPlace
     pendingBatchPlacements: Array.isArray(pendingBatchPlacements) ? [...pendingBatchPlacements] : [],
     textToImage: false,
     currentJobCount: 0,
-    apiKey: apiKey || { ...DEFAULT_API_KEYS },
+    apiKey: apiKeys.apiKey,
+    apiKeyProfiles: apiKeys.apiKeyProfiles,
+    activeApiKeyProfile: apiKeys.activeApiKeyProfile,
     promptPresets: promptPresets || { ...DEFAULT_PROMPT_PRESETS }
   };
 }

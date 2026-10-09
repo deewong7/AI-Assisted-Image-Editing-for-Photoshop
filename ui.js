@@ -1,4 +1,5 @@
 const utils = require("./utils");
+const { profileNames } = require("./api-key-profiles");
 
 function getResolutionCapOptions(state, models) {
   return {
@@ -80,6 +81,14 @@ function getUI() {
     adaptiveResolutionSetting: document.getElementById("adaptiveResolutionSetting"),
     allow4KGeneration: document.getElementById("allow4KGeneration"),
     upgradeFactorSlider: document.getElementById("upgradeFactorSlider"),
+    apiKeyProfilePicker: document.getElementById("apiKeyProfilePicker"),
+    apiKeyProfileMenu: document.getElementById("apiKeyProfileMenu"),
+    editApiKeyProfileButton: document.getElementById("editApiKeyProfileButton"),
+    newApiKeyProfileButton: document.getElementById("newApiKeyProfileButton"),
+    apiKeyProfileEdit: document.getElementById("apiKeyProfileEdit"),
+    apiKeyProfileName: document.getElementById("apiKeyProfileName"),
+    saveApiKeyProfile: document.getElementById("saveApiKeyProfile"),
+    deleteApiKeyProfile: document.getElementById("deleteApiKeyProfile"),
     apiKeyGoogleAiStudio: document.getElementById("api-key-google-ai-studio"),
     apiKeyGoogleVertexAi: document.getElementById("api-key-google-vertex-ai"),
     apiKeyBytedance: document.getElementById("api-key-bytedance"),
@@ -249,6 +258,42 @@ function populatePromptPresets(ui, promptPresets) {
   });
 }
 
+function populateApiKeyProfiles(ui, store) {
+  const menu = ui?.apiKeyProfileMenu;
+  if (!menu || !store?.profiles) return;
+
+  const names = profileNames(store);
+  const active = names.includes(store.activeProfile) ? store.activeProfile : names[0];
+
+  if ("innerHTML" in menu) {
+    menu.innerHTML = "";
+  }
+
+  names.forEach(name => {
+    const item = typeof document !== "undefined" && typeof document.createElement === "function"
+      ? document.createElement("sp-menu-item")
+      : {};
+    item.name = name;
+    item.textContent = name;
+    item.value = name;
+    item.selected = name === active;
+    if (typeof item.setAttribute === "function") {
+      if (item.selected) {
+        item.setAttribute("selected", "");
+      } else if (typeof item.removeAttribute === "function") {
+        item.removeAttribute("selected");
+      }
+    }
+    if (typeof menu.appendChild === "function") {
+      menu.appendChild(item);
+    }
+  });
+
+  if (ui.apiKeyProfilePicker) {
+    ui.apiKeyProfilePicker.value = active || "";
+  }
+}
+
 function setImagePreview(ui, base64) {
   if (!ui.imageToProcess) return;
   ui.imageToProcess.innerHTML = `<image src='data:image/png;base64,${base64}'></image>`;
@@ -372,6 +417,7 @@ module.exports = {
   getUI,
   renderModelUI,
   populatePromptPresets,
+  populateApiKeyProfiles,
   setImagePreview,
   clearImagePreview,
   setChatImagePreview,

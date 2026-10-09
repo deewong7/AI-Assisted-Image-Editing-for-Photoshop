@@ -1,12 +1,20 @@
 const {
   renderModelUI,
   populatePromptPresets,
+  populateApiKeyProfiles,
   clearImagePreview,
   appendReferencePreview,
   clearReferencePreview,
   renderDeferredBatchPlacements,
   renderJobCount
 } = require("./ui");
+const {
+  DEFAULT_PROFILE_NAME,
+  createProfile,
+  renameProfile,
+  deleteProfile,
+  profileActionMessage
+} = require("./api-key-profiles");
 const { DEFAULT_MAX_BATCH_COUNT, clampMaxBatchCount, clampBatchCount } = require("./limits");
 const { normalizeGroupColorLabel } = require("./group-color-labels");
 
@@ -63,7 +71,54 @@ function clearApiKeyFields(ui) {
   }
 }
 
+function ensureApiKeyProfiles(state) {
+  const profilesAreValid = state.apiKeyProfiles
+    && typeof state.apiKeyProfiles === "object"
+    && !Array.isArray(state.apiKeyProfiles);
+
+  if (!profilesAreValid) {
+    const keys = state.apiKey && typeof state.apiKey === "object" ? state.apiKey : {};
+    state.apiKeyProfiles = { [DEFAULT_PROFILE_NAME]: keys };
+    state.activeApiKeyProfile = DEFAULT_PROFILE_NAME;
+    state.apiKey = keys;
+    return;
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(state.apiKeyProfiles, DEFAULT_PROFILE_NAME)) {
+    state.apiKeyProfiles[DEFAULT_PROFILE_NAME] = {};
+  }
+
+  if (!state.activeApiKeyProfile || !Object.prototype.hasOwnProperty.call(state.apiKeyProfiles, state.activeApiKeyProfile)) {
+    state.activeApiKeyProfile = DEFAULT_PROFILE_NAME;
+  }
+
+  state.apiKey = state.apiKeyProfiles[state.activeApiKeyProfile];
+}
+
+function persistApiKeyStore(storage, state) {
+  ensureApiKeyProfiles(state);
+  storage.saveApiKeys(localStorage, {
+    activeProfile: state.activeApiKeyProfile,
+    profiles: state.apiKeyProfiles
+  });
+}
+
+function readApiKeyStore(state) {
+  ensureApiKeyProfiles(state);
+  return {
+    activeProfile: state.activeApiKeyProfile,
+    profiles: state.apiKeyProfiles
+  };
+}
+
+function applyApiKeyStore(state, store) {
+  state.apiKeyProfiles = store.profiles;
+  state.activeApiKeyProfile = store.activeProfile;
+  state.apiKey = state.apiKeyProfiles[state.activeApiKeyProfile];
+}
+
 function persistPendingApiKeys(ui, state, storage, pendingEdits) {
+  ensureApiKeyProfiles(state);
   let changed = false;
 
   for (const { fieldKey, keyName } of KEY_MAP) {
@@ -86,7 +141,7 @@ function persistPendingApiKeys(ui, state, storage, pendingEdits) {
   }
 
   if (changed) {
-    storage.saveApiKeys(localStorage, state.apiKey);
+    persistApiKeyStore(storage, state);
   }
 }
 
@@ -223,6 +278,12 @@ function normalizePromptPresetMap(presets) {
 
 function initializeUI({ ui, state, models, logger, storage, defaultChatPromptText = "" }) {
   markStoredApiKeysValid(ui, state);
+  if (state.apiKeyProfiles) {
+    populateApiKeyProfiles(ui, {
+      activeProfile: state.activeApiKeyProfile,
+      profiles: state.apiKeyProfiles
+    });
+  }
   populatePromptPresets(ui, state.promptPresets);
   renderModelUI(ui, state, models, logger.logLine);
   if (ui.chatPromptInput && !ui.chatPromptInput.value?.trim()) {
@@ -300,6 +361,37 @@ function bindEvents({
       fn();
     } finally {
       ignoreApiKeyFieldInput = false;
+    }
+  }
+
+  function syncApiKeyFields() {
+    ensureApiKeyProfiles(state);
+    const show = ui.showKey?.checked === true;
+    withIgnoredApiKeyInput(() => {
+      for (const { fieldKey, keyName } of KEY_MAP) {
+        const el = ui[fieldKey];
+        if (!el) continue;
+        const stored = state.apiKey[keyName];
+        el.valid = typeof stored === "string" && stored.length > 0;
+        el.value = show && typeof stored === "string" ? stored : "";
+      }
+    });
+    Object.keys(pendingApiKeyEdits).forEach(keyName => {
+      delete pendingApiKeyEdits[keyName];
+    });
+    if (ui.apiKeyProfileName) {
+      ui.apiKeyProfileName.value = state.activeApiKeyProfile;
+    }
+  }
+
+  function refreshApiKeyProfiles() {
+    populateApiKeyProfiles(ui, readApiKeyStore(state));
+  }
+
+  function rejectProfileAction(action, result) {
+    const message = profileActionMessage(action, result);
+    if (message && typeof logLine === "function") {
+      logLine(message);
     }
   }
 
@@ -550,6 +642,78 @@ function bindEvents({
           delete pendingApiKeyEdits[keyName];
         }
       });
+    });
+  }
+
+  if (ui.apiKeyProfilePicker) {
+    ui.apiKeyProfilePicker.addEventListener("change", (e) => {
+      ensureApiKeyProfiles(state);
+      const name = typeof e.target?.value === "string" ? e.target.value.trim() : "";
+      if (!name || name === state.activeApiKeyProfile) return;
+      if (!Object.prototype.hasOwnProperty.call(state.apiKeyProfiles, name)) return;
+      state.activeApiKeyProfile = name;
+      state.apiKey = state.apiKeyProfiles[name];
+      syncApiKeyFields();
+      persistApiKeyStore(storage, state);
+    });
+  }
+
+  if (ui.editApiKeyProfileButton) {
+    ui.editApiKeyProfileButton.addEventListener("click", () => {
+      if (!ui.apiKeyProfileEdit) return;
+      const opening = ui.apiKeyProfileEdit.style.display === "none";
+      ui.apiKeyProfileEdit.style.display = opening ? "" : "none";
+      if (opening && ui.apiKeyProfileName) {
+        ui.apiKeyProfileName.value = state.activeApiKeyProfile || DEFAULT_PROFILE_NAME;
+      }
+    });
+  }
+
+  if (ui.newApiKeyProfileButton) {
+    ui.newApiKeyProfileButton.addEventListener("click", () => {
+      const result = createProfile(readApiKeyStore(state), state.activeApiKeyProfile);
+      applyApiKeyStore(state, result.store);
+      refreshApiKeyProfiles();
+      if (ui.apiKeyProfileEdit) {
+        ui.apiKeyProfileEdit.style.display = "";
+      }
+      syncApiKeyFields();
+      persistApiKeyStore(storage, state);
+    });
+  }
+
+  if (ui.saveApiKeyProfile) {
+    ui.saveApiKeyProfile.addEventListener("click", () => {
+      ensureApiKeyProfiles(state);
+      const nextName = typeof ui.apiKeyProfileName?.value === "string" ? ui.apiKeyProfileName.value : "";
+      if (nextName.trim() === state.activeApiKeyProfile) {
+        return;
+      }
+      const result = renameProfile(readApiKeyStore(state), state.activeApiKeyProfile, nextName);
+      if (!result.ok) {
+        rejectProfileAction("rename", result);
+        return;
+      }
+      applyApiKeyStore(state, result.store);
+      refreshApiKeyProfiles();
+      if (ui.apiKeyProfileName) {
+        ui.apiKeyProfileName.value = state.activeApiKeyProfile;
+      }
+      persistApiKeyStore(storage, state);
+    });
+  }
+
+  if (ui.deleteApiKeyProfile) {
+    ui.deleteApiKeyProfile.addEventListener("click", () => {
+      const result = deleteProfile(readApiKeyStore(state), state.activeApiKeyProfile);
+      if (!result.ok) {
+        rejectProfileAction("delete", result);
+        return;
+      }
+      applyApiKeyStore(state, result.store);
+      refreshApiKeyProfiles();
+      syncApiKeyFields();
+      persistApiKeyStore(storage, state);
     });
   }
 

@@ -1,11 +1,11 @@
 const utils = require("./utils");
 
 function loadApiKeys(storage, defaults) {
-  return utils.loadKeysFromStorage(storage, defaults);
+  return utils.loadApiKeyStore(storage, defaults);
 }
 
-function saveApiKeys(storage, apiKey) {
-  utils.saveKeysToStorage(storage, apiKey);
+function saveApiKeys(storage, apiKeyStore) {
+  utils.saveApiKeyStore(storage, apiKeyStore);
 }
 
 function loadPromptPresets(storage, defaults) {

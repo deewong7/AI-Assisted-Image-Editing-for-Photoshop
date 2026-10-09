@@ -218,6 +218,89 @@ test.describe("loadKeysFromStorage", () => {
   });
 });
 
+const STORE_DEFAULTS = {
+  "NanoBananaPro-api-key": "",
+  "GoogleAIStudio-api-key": "",
+  "GoogleVertexAI-api-key": "",
+  "SeeDream-api-key": "",
+  "xAI-api-key": ""
+};
+
+test.describe("loadApiKeyStore", () => {
+  test("returns an empty default profile when storage is missing", () => {
+    const storage = createStorage();
+    const loaded = utils.loadApiKeyStore(storage, STORE_DEFAULTS);
+    assert.equal(loaded.activeProfile, "default");
+    assert.deepEqual(loaded.profiles.default, STORE_DEFAULTS);
+    assert.equal(storage._store.apiKeys, undefined);
+  });
+
+  test("wraps a legacy flat object as the default profile without rewriting storage", () => {
+    const raw = JSON.stringify({ "NanoBananaPro-api-key": "AIza_LEGACY" });
+    const storage = createStorage({ apiKeys: raw });
+    const loaded = utils.loadApiKeyStore(storage, STORE_DEFAULTS);
+    assert.equal(loaded.activeProfile, "default");
+    assert.equal(loaded.profiles.default["GoogleAIStudio-api-key"], "AIza_LEGACY");
+    assert.equal(loaded.profiles.default["NanoBananaPro-api-key"], "AIza_LEGACY");
+    assert.equal(loaded.profiles.default["xAI-api-key"], "");
+    assert.equal(storage._store.apiKeys, raw);
+  });
+
+  test("migrates a legacy non-AIza key inside a stored profile", () => {
+    const storage = createStorage({
+      apiKeys: JSON.stringify({
+        activeProfile: "default",
+        profiles: {
+          default: { "NanoBananaPro-api-key": "AQ_LEGACY" }
+        }
+      })
+    });
+    const loaded = utils.loadApiKeyStore(storage, STORE_DEFAULTS);
+    assert.equal(loaded.profiles.default["GoogleVertexAI-api-key"], "AQ_LEGACY");
+    assert.equal(loaded.profiles.default["GoogleAIStudio-api-key"], "");
+  });
+
+  test("keeps a known active profile and fills missing provider keys", () => {
+    const storage = createStorage({
+      apiKeys: JSON.stringify({
+        activeProfile: "work",
+        profiles: {
+          default: { "xAI-api-key": "D" },
+          work: { "xAI-api-key": "W" }
+        }
+      })
+    });
+    const loaded = utils.loadApiKeyStore(storage, STORE_DEFAULTS);
+    assert.equal(loaded.activeProfile, "work");
+    assert.equal(loaded.profiles.work["xAI-api-key"], "W");
+    assert.equal(loaded.profiles.work["SeeDream-api-key"], "");
+    assert.equal(loaded.profiles.default["xAI-api-key"], "D");
+  });
+
+  test("falls back to default when the active profile is missing", () => {
+    const storage = createStorage({
+      apiKeys: JSON.stringify({
+        activeProfile: "missing",
+        profiles: {
+          work: { "xAI-api-key": "W" }
+        }
+      })
+    });
+    const loaded = utils.loadApiKeyStore(storage, STORE_DEFAULTS);
+    assert.equal(loaded.activeProfile, "default");
+    assert.deepEqual(loaded.profiles.default, STORE_DEFAULTS);
+    assert.equal(loaded.profiles.work["xAI-api-key"], "W");
+  });
+
+  test("replaces invalid JSON with an empty default profile and leaves storage unchanged", () => {
+    const storage = createStorage({ apiKeys: "{invalid" });
+    const loaded = utils.loadApiKeyStore(storage, STORE_DEFAULTS);
+    assert.equal(loaded.activeProfile, "default");
+    assert.deepEqual(loaded.profiles.default, STORE_DEFAULTS);
+    assert.equal(storage._store.apiKeys, "{invalid");
+  });
+});
+
 test.describe("loadPromptPresetsFromStorage", () => {
   test("persists defaults on missing", () => {
     const storage = createStorage();

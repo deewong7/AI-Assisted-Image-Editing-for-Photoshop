@@ -1085,8 +1085,9 @@ test.describe("api key updates", () => {
     assert.equal(args.state.apiKey["SeeDream-api-key"], "BYTE_KEY");
     assert.equal(args.state.apiKey["xAI-api-key"], "XAI_KEY");
     assert.equal(savedKeys.length, 1);
-    assert.equal(savedKeys[0]["GoogleAIStudio-api-key"], "NEW_STUDIO");
-    assert.equal(savedKeys[0]["GoogleVertexAI-api-key"], "VERTEX_KEY");
+    assert.equal(savedKeys[0].activeProfile, "default");
+    assert.equal(savedKeys[0].profiles.default["GoogleAIStudio-api-key"], "NEW_STUDIO");
+    assert.equal(savedKeys[0].profiles.default["GoogleVertexAI-api-key"], "VERTEX_KEY");
     assert.equal(ui.apiKeyGoogleAiStudio.value, "");
     assert.equal(ui.apiKeyGoogleVertexAi.value, "");
     assert.equal(ui.showKey.checked, false);
@@ -1114,7 +1115,7 @@ test.describe("api key updates", () => {
     assert.equal(args.state.apiKey["GoogleAIStudio-api-key"], "STUDIO_KEY");
     assert.equal(args.state.apiKey["GoogleVertexAI-api-key"], "NEW_VERTEX");
     assert.equal(savedKeys.length, 1);
-    assert.equal(savedKeys[0]["GoogleAIStudio-api-key"], "STUDIO_KEY");
+    assert.equal(savedKeys[0].profiles.default["GoogleAIStudio-api-key"], "STUDIO_KEY");
   });
 
   test("updating Bytedance or xAI does not touch Google keys", () => {
@@ -1201,5 +1202,397 @@ test.describe("api key updates", () => {
     assert.equal(ui.apiKeyGoogleAiStudio.value, "");
     assert.equal(ui.apiKeyGoogleVertexAi.value, "");
     assert.equal(ui.showKey.checked, false);
+  });
+});
+
+function createProfileMenu() {
+  const items = [];
+  const menu = {
+    items,
+    appendChild(item) {
+      items.push(item);
+    },
+    querySelectorAll() {
+      return items;
+    }
+  };
+  Object.defineProperty(menu, "innerHTML", {
+    get() {
+      return "";
+    },
+    set() {
+      items.length = 0;
+    }
+  });
+  return menu;
+}
+
+function createProfilePicker(initialValue = "default") {
+  const listeners = {};
+  return {
+    value: initialValue,
+    addEventListener(type, handler) {
+      listeners[type] = handler;
+    },
+    change(nextValue) {
+      this.value = nextValue;
+      if (typeof listeners.change === "function") {
+        listeners.change({ target: this });
+      }
+    }
+  };
+}
+
+function createProfileUi() {
+  return {
+    ...createApiKeyUi(),
+    apiKeyProfilePicker: createProfilePicker(),
+    apiKeyProfileMenu: createProfileMenu(),
+    editApiKeyProfileButton: createButton(),
+    newApiKeyProfileButton: createButton(),
+    apiKeyProfileEdit: { style: { display: "none" } },
+    apiKeyProfileName: createTextField(),
+    saveApiKeyProfile: createButton(),
+    deleteApiKeyProfile: createButton()
+  };
+}
+
+function useProfiles(state, profiles, active) {
+  state.apiKeyProfiles = profiles;
+  state.activeApiKeyProfile = active;
+  state.apiKey = profiles[active];
+}
+
+function profileKeys(studio, extra = {}) {
+  return {
+    "GoogleAIStudio-api-key": studio,
+    "GoogleVertexAI-api-key": "",
+    "SeeDream-api-key": "",
+    "xAI-api-key": "",
+    ...extra
+  };
+}
+
+test.describe("api key profiles", () => {
+  test("initializeUI lists default first and selects the active profile", (t) => {
+    const originalDocument = global.document;
+    global.document = {
+      createElement() {
+        return {};
+      }
+    };
+    t.after(() => {
+      global.document = originalDocument;
+    });
+
+    const ui = createProfileUi();
+    const args = createBaseArgs(ui);
+    useProfiles(args.state, {
+      work: profileKeys("WORK"),
+      default: profileKeys("STUDIO")
+    }, "work");
+
+    initializeUI(args);
+
+    assert.deepEqual(ui.apiKeyProfileMenu.items.map(item => item.value), ["default", "work"]);
+    assert.equal(ui.apiKeyProfileMenu.items.find(item => item.value === "work").selected, true);
+    assert.equal(ui.apiKeyProfilePicker.value, "work");
+  });
+
+  test("Update writes only the active profile", () => {
+    const saved = [];
+    const ui = createProfileUi();
+    const args = createBaseArgs(ui);
+    const profiles = {
+      default: profileKeys("STUDIO"),
+      work: profileKeys("WORK_STUDIO", { "GoogleVertexAI-api-key": "WORK_VERTEX" })
+    };
+    useProfiles(args.state, profiles, "work");
+    args.storage.saveApiKeys = (_storage, store) => {
+      saved.push(store);
+    };
+    global.localStorage = {};
+
+    bindEvents(args);
+    ui.apiKeyGoogleAiStudio.input("NEW");
+    ui.updateApiKey.click();
+
+    assert.equal(profiles.work["GoogleAIStudio-api-key"], "NEW");
+    assert.equal(profiles.work["GoogleVertexAI-api-key"], "WORK_VERTEX");
+    assert.equal(profiles.default["GoogleAIStudio-api-key"], "STUDIO");
+    assert.equal(args.state.apiKey, profiles.work);
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].activeProfile, "work");
+    assert.equal(saved[0].profiles.work["GoogleAIStudio-api-key"], "NEW");
+    assert.equal(saved[0].profiles.default["GoogleAIStudio-api-key"], "STUDIO");
+  });
+
+  test("switching profiles drops unsaved key text", () => {
+    const saved = [];
+    const ui = createProfileUi();
+    const args = createBaseArgs(ui);
+    const profiles = {
+      default: profileKeys("STUDIO"),
+      work: profileKeys("WORK_STUDIO", { "GoogleVertexAI-api-key": "WORK_VERTEX" })
+    };
+    useProfiles(args.state, profiles, "default");
+    args.storage.saveApiKeys = (_storage, store) => {
+      saved.push(store);
+    };
+    global.localStorage = {};
+
+    bindEvents(args);
+    ui.apiKeyGoogleAiStudio.input("UNSAVED");
+    ui.apiKeyProfilePicker.change("work");
+
+    assert.equal(profiles.default["GoogleAIStudio-api-key"], "STUDIO");
+    assert.equal(args.state.activeApiKeyProfile, "work");
+    assert.equal(args.state.apiKey, profiles.work);
+    assert.equal(ui.apiKeyGoogleAiStudio.value, "");
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].activeProfile, "work");
+
+    ui.updateApiKey.click();
+    assert.equal(saved.length, 1);
+    assert.equal(profiles.work["GoogleAIStudio-api-key"], "WORK_STUDIO");
+  });
+
+  test("switching profiles shows the new keys when plaintext is on", () => {
+    const ui = createProfileUi();
+    const args = createBaseArgs(ui);
+    useProfiles(args.state, {
+      default: profileKeys("STUDIO"),
+      work: profileKeys("WORK_STUDIO", { "GoogleVertexAI-api-key": "WORK_VERTEX" })
+    }, "default");
+    global.localStorage = {};
+
+    bindEvents(args);
+    ui.showKey.checked = true;
+    ui.apiKeyProfilePicker.change("work");
+
+    assert.equal(ui.apiKeyGoogleAiStudio.value, "WORK_STUDIO");
+    assert.equal(ui.apiKeyGoogleVertexAi.value, "WORK_VERTEX");
+    assert.equal(ui.apiKeyGoogleAiStudio.valid, true);
+  });
+
+  test("New copies the selected profile's saved keys and opens the name panel", (t) => {
+    const saved = [];
+    const originalDocument = global.document;
+    global.document = {
+      createElement() {
+        return {};
+      }
+    };
+    t.after(() => {
+      global.document = originalDocument;
+    });
+
+    const ui = createProfileUi();
+    const args = createBaseArgs(ui);
+    const profiles = {
+      default: profileKeys("STUDIO")
+    };
+    useProfiles(args.state, profiles, "default");
+    args.storage.saveApiKeys = (_storage, store) => {
+      saved.push(store);
+    };
+    global.localStorage = {};
+
+    bindEvents(args);
+    ui.apiKeyGoogleAiStudio.input("UNSAVED");
+    ui.newApiKeyProfileButton.click();
+
+    assert.equal(profiles.default["GoogleAIStudio-api-key"], "STUDIO");
+    assert.equal(args.state.activeApiKeyProfile, "profile 2");
+    assert.equal(args.state.apiKeyProfiles["profile 2"]["GoogleAIStudio-api-key"], "STUDIO");
+    assert.notEqual(args.state.apiKeyProfiles["profile 2"], profiles.default);
+    assert.equal(args.state.apiKey, args.state.apiKeyProfiles["profile 2"]);
+    assert.equal(ui.apiKeyProfileEdit.style.display, "");
+    assert.equal(ui.apiKeyProfileName.value, "profile 2");
+    assert.equal(ui.apiKeyProfilePicker.value, "profile 2");
+    assert.equal(ui.apiKeyGoogleAiStudio.value, "");
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].profiles["profile 2"]["GoogleAIStudio-api-key"], "STUDIO");
+  });
+
+  test("modify button toggles the name panel", () => {
+    const ui = createProfileUi();
+    const args = createBaseArgs(ui);
+    useProfiles(args.state, {
+      default: profileKeys("STUDIO"),
+      work: profileKeys("WORK")
+    }, "work");
+
+    bindEvents(args);
+    ui.editApiKeyProfileButton.click();
+
+    assert.equal(ui.apiKeyProfileEdit.style.display, "");
+    assert.equal(ui.apiKeyProfileName.value, "work");
+
+    ui.editApiKeyProfileButton.click();
+    assert.equal(ui.apiKeyProfileEdit.style.display, "none");
+  });
+
+  test("a duplicate profile name is logged and not saved", () => {
+    const saved = [];
+    const logs = [];
+    const ui = createProfileUi();
+    const args = createBaseArgs(ui);
+    useProfiles(args.state, {
+      default: profileKeys("STUDIO"),
+      work: profileKeys("WORK")
+    }, "work");
+    args.logger.logLine = (...parts) => logs.push(parts.join(" "));
+    args.storage.saveApiKeys = (_storage, store) => {
+      saved.push(store);
+    };
+
+    bindEvents(args);
+    ui.apiKeyProfileName.value = "default";
+    ui.saveApiKeyProfile.click();
+
+    assert.deepEqual(logs, ["Profile name already exists: default."]);
+    assert.equal(args.state.activeApiKeyProfile, "work");
+    assert.equal(saved.length, 0);
+  });
+
+  test("an empty profile name is logged and not saved", () => {
+    const logs = [];
+    const ui = createProfileUi();
+    const args = createBaseArgs(ui);
+    useProfiles(args.state, {
+      default: profileKeys("STUDIO"),
+      work: profileKeys("WORK")
+    }, "work");
+    args.logger.logLine = (...parts) => logs.push(parts.join(" "));
+
+    bindEvents(args);
+    ui.apiKeyProfileName.value = "   ";
+    ui.saveApiKeyProfile.click();
+
+    assert.deepEqual(logs, ["Enter a profile name."]);
+    assert.equal(args.state.activeApiKeyProfile, "work");
+  });
+
+  test("the default profile cannot be renamed", () => {
+    const saved = [];
+    const logs = [];
+    const ui = createProfileUi();
+    const args = createBaseArgs(ui);
+    useProfiles(args.state, {
+      default: profileKeys("STUDIO")
+    }, "default");
+    args.logger.logLine = (...parts) => logs.push(parts.join(" "));
+    args.storage.saveApiKeys = () => {
+      saved.push("saved");
+    };
+
+    bindEvents(args);
+    ui.apiKeyProfileName.value = "other";
+    ui.saveApiKeyProfile.click();
+
+    assert.deepEqual(logs, ["The default profile cannot be renamed."]);
+    assert.equal(args.state.activeApiKeyProfile, "default");
+    assert.equal(saved.length, 0);
+  });
+
+  test("the default profile cannot be deleted", () => {
+    const saved = [];
+    const logs = [];
+    const ui = createProfileUi();
+    const args = createBaseArgs(ui);
+    useProfiles(args.state, {
+      default: profileKeys("STUDIO"),
+      work: profileKeys("WORK")
+    }, "default");
+    args.logger.logLine = (...parts) => logs.push(parts.join(" "));
+    args.storage.saveApiKeys = () => {
+      saved.push("saved");
+    };
+
+    bindEvents(args);
+    ui.deleteApiKeyProfile.click();
+
+    assert.deepEqual(logs, ["The default profile cannot be deleted."]);
+    assert.ok(args.state.apiKeyProfiles.work);
+    assert.equal(args.state.activeApiKeyProfile, "default");
+    assert.equal(saved.length, 0);
+  });
+
+  test("deleting the active profile selects default", (t) => {
+    const saved = [];
+    const originalDocument = global.document;
+    global.document = {
+      createElement() {
+        return {};
+      }
+    };
+    t.after(() => {
+      global.document = originalDocument;
+    });
+
+    const ui = createProfileUi();
+    const args = createBaseArgs(ui);
+    useProfiles(args.state, {
+      default: profileKeys("STUDIO"),
+      work: profileKeys("WORK")
+    }, "work");
+    args.storage.saveApiKeys = (_storage, store) => {
+      saved.push(store);
+    };
+    global.localStorage = {};
+
+    bindEvents(args);
+    ui.deleteApiKeyProfile.click();
+
+    assert.equal(args.state.apiKeyProfiles.work, undefined);
+    assert.equal(args.state.activeApiKeyProfile, "default");
+    assert.equal(args.state.apiKey["GoogleAIStudio-api-key"], "STUDIO");
+    assert.equal(ui.apiKeyProfileName.value, "default");
+    assert.equal(ui.apiKeyProfilePicker.value, "default");
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].activeProfile, "default");
+    assert.equal(saved[0].profiles.work, undefined);
+  });
+
+  test("Save renames the selected profile and keeps its keys", (t) => {
+    const saved = [];
+    const logs = [];
+    const originalDocument = global.document;
+    global.document = {
+      createElement() {
+        return {};
+      }
+    };
+    t.after(() => {
+      global.document = originalDocument;
+    });
+
+    const ui = createProfileUi();
+    const args = createBaseArgs(ui);
+    useProfiles(args.state, {
+      default: profileKeys("STUDIO"),
+      work: profileKeys("WORK")
+    }, "work");
+    args.logger.logLine = (...parts) => logs.push(parts.join(" "));
+    args.storage.saveApiKeys = (_storage, store) => {
+      saved.push(store);
+    };
+    global.localStorage = {};
+
+    bindEvents(args);
+    ui.apiKeyProfileName.value = " studio ";
+    ui.saveApiKeyProfile.click();
+
+    assert.deepEqual(logs, []);
+    assert.equal(args.state.activeApiKeyProfile, "studio");
+    assert.equal(args.state.apiKeyProfiles.work, undefined);
+    assert.equal(args.state.apiKey["GoogleAIStudio-api-key"], "WORK");
+    assert.equal(ui.apiKeyProfileName.value, "studio");
+    assert.equal(ui.apiKeyProfilePicker.value, "studio");
+    assert.deepEqual(ui.apiKeyProfileMenu.items.map(item => item.value), ["default", "studio"]);
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].activeProfile, "studio");
+    assert.equal(saved[0].profiles.studio["GoogleAIStudio-api-key"], "WORK");
   });
 });

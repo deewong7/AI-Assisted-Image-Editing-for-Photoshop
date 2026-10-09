@@ -36,7 +36,7 @@ if (ui.modelPicker) {
 }
 
 const logger = createLogger(ui);
-const apiKey = storage.loadApiKeys(localStorage, DEFAULT_API_KEYS);
+const apiKeyStore = storage.loadApiKeys(localStorage, DEFAULT_API_KEYS);
 const promptPresets = storage.loadPromptPresets(localStorage, DEFAULT_PROMPT_PRESETS);
 const pluginPrefs = storage.loadPluginPrefs(localStorage, DEFAULT_PLUGIN_PREFS);
 const selection = createSelection({ app, constants, core, imaging, logLine: logger.logLine });
@@ -59,7 +59,7 @@ const deferredBatchManager = createDeferredBatchManager({
 
 const state = createState({
   ui,
-  apiKey,
+  apiKeyStore,
   promptPresets,
   pluginPrefs,
   pendingBatchPlacements: deferredBatchManager.getPendingBatches()

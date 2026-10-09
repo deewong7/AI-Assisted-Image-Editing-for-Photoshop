@@ -1,3 +1,5 @@
+const { normalizeApiKeyStore } = require("./api-key-profiles");
+
 const BASE_RESOLUTION = {
   "1K": 1024,
   "2K": 2048,
@@ -170,6 +172,26 @@ function saveKeysToStorage(storage, apiKey) {
   storage.setItem("apiKeys", JSON.stringify(apiKey));
 }
 
+function loadApiKeyStore(storage, defaultKeys) {
+  const raw = storage.getItem("apiKeys");
+  if (!raw) {
+    return normalizeApiKeyStore(null, defaultKeys, migrateGoogleApiKeys);
+  }
+
+  try {
+    return normalizeApiKeyStore(JSON.parse(raw), defaultKeys, migrateGoogleApiKeys);
+  } catch {
+    return normalizeApiKeyStore(null, defaultKeys, migrateGoogleApiKeys);
+  }
+}
+
+function saveApiKeyStore(storage, store) {
+  storage.setItem("apiKeys", JSON.stringify({
+    activeProfile: store?.activeProfile || "default",
+    profiles: store?.profiles || {}
+  }));
+}
+
 function loadPromptPresetsFromStorage(storage, defaultPresets) {
   const raw = storage.getItem("promptPresets");
   if (!raw) {
@@ -217,6 +239,8 @@ module.exports = {
   migrateGoogleApiKeys,
   loadKeysFromStorage,
   saveKeysToStorage,
+  loadApiKeyStore,
+  saveApiKeyStore,
   loadPromptPresetsFromStorage,
   savePromptPresetsToStorage,
   loadPluginPrefsFromStorage,
