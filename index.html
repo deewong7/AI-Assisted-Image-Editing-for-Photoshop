@@ -26,69 +26,8 @@
     <!-- PAGE: MAIN -->
     <sp-div id="main" data-page>
 
-      <!-- MODEL settings -->
-      <sp-div>
-        <sp-heading size="xs">Model</sp-heading>
-        <sp-divider size="small"></sp-divider>
-        <!-- Select models -->
-        <sp-picker placeholder="Choose a model..." , style="width: 220px">
-            <sp-menu id="modelPicker" slot="options">
-              <sp-menu-item value="doubao-seedream-4-5-251128">SeeDream 4.5</sp-menu-item>
-              <sp-menu-item value="doubao-seedream-5-0-260128">SeeDream 5.0</sp-menu-item>
-              <sp-menu-item value="doubao-seedream-5-0-pro-260628">SeeDream 5.0 Pro</sp-menu-item>
-              <sp-menu-item value="gemini-3-pro-image" selected>Nano Banana Pro 🍌</sp-menu-item>
-              <sp-menu-item value="gemini-3.1-flash-image">Nano Banana 2 🍌</sp-menu-item>
-            <sp-menu-item value="grok-imagine-image">Grok Imagine</sp-menu-item>
-            <sp-menu-item value="grok-imagine-image-2.0">Grok Imagine 2.0</sp-menu-item>
-            <!-- <sp-menu-item disabled value="flux2.max">FLUX.2[MAX]</sp-menu-item>
-            <sp-menu-item disabled value="z-image">Z-Image</sp-menu-item> -->
-          </sp-menu>
-        </sp-picker>
-
-        <!-- Resolution -->
-        <sp-picker id="resolutionPickerArea" placeholder="Choose a resolution..." ,
-          style="width: 108px; display: none;">
-          <sp-menu id="resolutionPicker" slot="options">
-            <sp-menu-item id="1K" value="1K">1K</sp-menu-item>
-            <sp-menu-item id="2K" value="2K" selected>2K</sp-menu-item>
-            <sp-menu-item id="3K" value="3K">3K</sp-menu-item>
-            <sp-menu-item id="4K" value="4K">4K</sp-menu-item>
-          </sp-menu>
-        </sp-picker>
-
-        <!-- Aspect Ratio -->
-        <sp-picker id="ratioPicker" placehodler="Choose a ratio" , style="width: 110px; display: none;">
-          <sp-menu id="aspectRatioPicker" slot="options">
-            <!-- As nano banana 3 pro and seedream 4.5/5.0 support arbitrary ratio input  -->
-            <!-- it is unnecessary to add the ratio parameter to the http request body -->
-            <sp-menu-item value="default" selected>Auto</sp-menu-item>
-            <sp-menu-item value="1:1">1:1</sp-menu-item>
-            <sp-menu-item value="3:4">3:4</sp-menu-item>
-            <sp-menu-item value="4:3">4:3</sp-menu-item>
-            <sp-menu-item value="2:3">2:3</sp-menu-item>
-            <sp-menu-item value="3:2">3:2</sp-menu-item>
-            <sp-menu-item value="16:9">16:9</sp-menu-item>
-          </sp-menu>
-        </sp-picker>
-
-      </sp-div>
-
-      <!-- Google Model Specific Settings -->
-      <sp-div id="googleModel" width="220px">
-        <!-- Temperature -->
-        <sp-checkbox id="lockParam" checked>Lock Parameter</sp-checkbox>
-        <sp-slider disabled id="temperature" variant="filled" min="0.3" max="1.00" value="1.0" step="0.01">
-          <sp-label slot="label">Temperature</sp-label>
-        </sp-slider>
-
-        <sp-slider disabled id="top_p" variant="filled" min="0.8" max="0.95" value=".9" step="0.01">
-          <sp-label slot="label">top_P</sp-label>
-        </sp-slider>
-
-      </sp-div>
-
       <!-- <sp-divider></sp-divider> -->
-      <sp-heading size="xs">Generate Image</sp-heading>
+      <sp-heading size="xs" hidden>Generate Image</sp-heading>
       <sp-divider size="small"></sp-divider>
       <!-- input text which should be used as prompt later on -->
 
@@ -196,8 +135,6 @@
 
 
       <!-- LOG -->
-      <sp-heading size="xs" class="logArea">Log</sp-heading>
-      <sp-divider size="small"></sp-divider>
       <sp-textarea class="log logArea" id="log" height="200px" placeholder="Logging information">
         <sp-label slot="label">Logging information</sp-label></sp-textarea>
       <sp-br></sp-br>
@@ -236,6 +173,52 @@
     <sp-div id="settings" data-page hidden>
       <!-- <sp-heading size="S">Developer</sp-heading> -->
       <sp-field-group label="settings">
+
+        <sp-label>Model</sp-label><br>
+        <sp-picker placeholder="Choose a model..." style="width: 220px">
+          <sp-menu id="modelPicker" slot="options">
+            <sp-menu-item value="doubao-seedream-4-5-251128">SeeDream 4.5</sp-menu-item>
+            <sp-menu-item value="doubao-seedream-5-0-260128">SeeDream 5.0</sp-menu-item>
+            <sp-menu-item value="doubao-seedream-5-0-pro-260628">SeeDream 5.0 Pro</sp-menu-item>
+            <sp-menu-item value="gemini-3-pro-image" selected>Nano Banana Pro 🍌</sp-menu-item>
+            <sp-menu-item value="gemini-3.1-flash-image">Nano Banana 2 🍌</sp-menu-item>
+            <sp-menu-item value="grok-imagine-image">Grok Imagine</sp-menu-item>
+            <sp-menu-item value="grok-imagine-image-2.0">Grok Imagine 2.0</sp-menu-item>
+          </sp-menu>
+        </sp-picker>
+        <br>
+
+        <sp-picker id="resolutionPickerArea" placeholder="Choose a resolution..." style="width: 200px; display: none;">
+          <sp-menu id="resolutionPicker" slot="options">
+            <sp-menu-item id="1K" value="1K">1K</sp-menu-item>
+            <sp-menu-item id="2K" value="2K" selected>2K</sp-menu-item>
+            <sp-menu-item id="3K" value="3K">3K</sp-menu-item>
+            <sp-menu-item id="4K" value="4K">4K</sp-menu-item>
+          </sp-menu>
+        </sp-picker>
+
+        <sp-picker id="ratioPicker" placeholder="Choose a ratio" style="width: 200px; display: none;">
+          <sp-menu id="aspectRatioPicker" slot="options">
+            <sp-menu-item value="default" selected>Auto</sp-menu-item>
+            <sp-menu-item value="1:1">1:1</sp-menu-item>
+            <sp-menu-item value="3:4">3:4</sp-menu-item>
+            <sp-menu-item value="4:3">4:3</sp-menu-item>
+            <sp-menu-item value="2:3">2:3</sp-menu-item>
+            <sp-menu-item value="3:2">3:2</sp-menu-item>
+            <sp-menu-item value="16:9">16:9</sp-menu-item>
+          </sp-menu>
+        </sp-picker>
+
+        <sp-div id="googleModel" width="220px">
+          <sp-checkbox id="lockParam" checked>Lock Parameter</sp-checkbox>
+          <sp-slider disabled id="temperature" variant="filled" min="0.3" max="1.00" value="1.0" step="0.01">
+            <sp-label slot="label">Temperature</sp-label>
+          </sp-slider>
+          <sp-slider disabled id="top_p" variant="filled" min="0.8" max="0.95" value=".9" step="0.01">
+            <sp-label slot="label">top_P</sp-label>
+          </sp-slider>
+        </sp-div>
+        <br>
 
         <sp-label>Generation</sp-label><br>
         <sp-slider id="maxWaitingTimeSlider" variant="filled" min="1" max="300" value="120" step="1"
